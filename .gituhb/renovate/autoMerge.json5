@@ -1,0 +1,21 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "packageRules": [
+      {
+        "description": ["Auto-merge container digests updates for trusted containers"],
+        "matchDatasources": ["docker"],
+        "automerge": true,
+        "automergeType": "branch",
+        "matchUpdateTypes": ["digest"],
+        "matchPackagePatterns": ["mschnitzer/asa-linux-server"]
+      },
+      {
+        "description": ["Auto-merge GitHub Actions for minor and patch"],
+        "matchManagers": ["github-actions"],
+        "matchDatasources": ["github-tags", "github-releases"],
+        "automerge": true,
+        "automergeType": "branch",
+        "matchUpdateTypes": ["major", "minor", "patch"]
+      }
+    ]
+  }

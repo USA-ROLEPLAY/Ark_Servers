@@ -1,0 +1,30 @@
+---
+services:
+  asa-server-ragnarok:
+    container_name: asa-server-ragnarok
+    hostname: asa-server-ragnarok
+    entrypoint: "/usr/bin/start_server"
+    user: gameserver
+    image: "mschnitzer/asa-linux-server:1.4.1"
+    tty: true
+    environment:
+      - ASA_START_PARAMS=Ragnarok_WP?listen?Port=7777?RCONPort=27020?RCONEnabled=True -WinLiveMaxPlayers=50 -clusterid=my-secret-id -ClusterDirOverride="/home/gameserver/cluster-shared"
+      - ENABLE_DEBUG=0
+    ports:
+      - 7777:7777/udp
+      - 27020:27020/tcp
+    volumes:
+      - /home/ubuntu/steam-ragnarok:/home/gameserver/Steam:rw
+      - /home/ubuntu/steamcmd-ragnarok:/home/gameserver/steamcmd:rw
+      - /home/ubuntu/server-files-ragnarok:/home/gameserver/server-files:rw
+      - /srv/ark_cluster:/home/gameserver/cluster-shared:rw
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - asa-network
+
+networks:
+  asa-network:
+    attachable: true
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: 'asanet'

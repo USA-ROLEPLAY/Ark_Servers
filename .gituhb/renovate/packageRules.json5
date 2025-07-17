@@ -1,0 +1,19 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "packageRules": [
+      {
+        "description": ["Loose versioning for non-server packages"],
+        "matchDatasources": ["docker"],
+        "matchPackagePatterns": ["cross-seed", "emby"],
+        "versioning": "loose"
+      },
+      {
+        "description": ["Custom schedule for frequently updated packages"],
+        "matchDataSources": ["docker"],
+        "matchPackagePatterns": ["minio", "reloader"],
+        "schedule": ["on the first day of the month"]
+      }
+    ]
+  }
+  
+  // Adjust minio and reloader to whats actually asking for frequesnt updates. I am not currently using either. 

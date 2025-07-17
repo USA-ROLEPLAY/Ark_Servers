@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor",
+    ":automergeBranch",
+    ":disableRateLimiting",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":skipStatusChecks",
+    ":timezone(America/New_York)",
+    "github>USA-ROLEPLAY/Ark_Servers//.github/renovate/allowedVersions.json5",
+    "github>USA-ROLEPLAY/Ark_Servers//.github/renovate/autoMerge.json5",
+    "github>USA-ROLEPLAY/Ark_Servers//.github/renovate/commitMessage.json5",
+    "github>USA-ROLEPLAY/Ark_Servers//.github/renovate/labels.json5",
+    "github>USA-ROLEPLAY/Ark_Servers//.github/renovate/packageRules.json5",
+    "github>USA-ROLEPLAY/Ark_Servers//.github/renovate/semanticCommits.json5"
+  ],
+  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
+  "suppressNotifications": ["prEditedNotification", "prIgnoreNotification"],
+  "onboarding": false,
+  "requireConfig": "ignored",
+  "ignorePaths": ["**/*.sops.*", "**/.archive/**", "**/resources/**"],
+}
