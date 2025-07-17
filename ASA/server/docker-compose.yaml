@@ -1,5 +1,5 @@
 services:
-  asa-server-${SERVER_NAME}:
+  asa-server:
     container_name: asa-server-${CONTAINER_NAME}
     hostname: asa-server-${HOST_NAME}
     entrypoint: "/usr/bin/start_server"
