@@ -31,8 +31,8 @@
 
 services:
   asa-server-1:
-    container_name: asa-server-theisland
-    hostname: asa-server-1
+    # container_name: asa-server-theisland
+    hostname: asa-server-theisland
     entrypoint: "/usr/bin/start_server"
     user: gameserver
     image: "mschnitzer/asa-linux-server:1.4.1"
