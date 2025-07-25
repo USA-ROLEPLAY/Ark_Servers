@@ -31,12 +31,6 @@ services:
       - server-files-1:/home/gameserver/server-files:rw
       - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
       - /etc/localtime:/etc/localtime:ro
-    healthcheck: # adding for coolify logging tests
-      test: ["CMD-SHELL", "pgrep ShooterGameServer || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
     networks:
       - asa-network # end of helth check option. remove if this doesn't work
     restart: unless-stopped
