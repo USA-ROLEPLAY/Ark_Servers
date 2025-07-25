@@ -1,6 +1,6 @@
 ---
 services:
-  asa-server-1:
+  asa-server:
     # container_name: asa-server-theisland
     hostname: asa-server-theisland
     # entrypoint: "/usr/bin/start_server"
@@ -39,6 +39,7 @@ services:
       start_period: 60s
     networks:
       - asa-network # end of helth check option. remove if this doesn't work
+    restart: unless-stopped
 
   set-permissions-1:
     container_name: fix-perms-theisland
