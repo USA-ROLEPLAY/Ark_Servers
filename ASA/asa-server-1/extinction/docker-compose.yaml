@@ -28,7 +28,7 @@ services:
       - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
       - /etc/localtime:/etc/localtime:ro
     networks:
-      - asa-network # end of helth check option. remove if this doesn't work
+      - asa-network
     restart: unless-stopped
 
   set-permissions-1:
@@ -52,9 +52,14 @@ volumes:
   steamcmd-3:
   server-files-3:
 
+
 networks:
   asa-network:
-    attachable: true
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: 'asanet'
+    external: true
+    name: asanet
+    
+# Network has to be created prior to booting container using the commands below:
+# docker network create \
+#   --driver bridge \
+#   --opt com.docker.network.bridge.name=asanet \
+#   asanet
