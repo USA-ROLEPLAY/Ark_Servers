@@ -51,9 +51,14 @@ volumes:
   steamcmd-1:
   server-files-1:
 
+
 networks:
   asa-network:
-    attachable: true
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: 'asanet'
+    external: true
+    name: asanet
+    
+# Network has to be created prior to booting container using the commands below:
+# docker network create \
+#   --driver bridge \
+#   --opt com.docker.network.bridge.name=asanet \
+#   asanet
