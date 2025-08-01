@@ -1,0 +1,64 @@
+---
+services:
+  asa-server:
+    container_name: asa-server-eden
+    hostname: asa-server-eden
+    entrypoint: "/usr/bin/start_server"
+    user: gameserver
+    image: "mschnitzer/asa-linux-server:1.4.1"
+    tty: true
+    environment:
+      - >-
+        ASA_START_PARAMS=Eden_WP?listen?Port=7779?RCONPort=27022?RCONEnabled=True
+        -WinLiveMaxPlayers=50
+        -mods=1149056,1065717,986540,929578,1133222,930442,947733,1066017,948965,940786,1122696,1019389,970540,935528,928548,942024,929838,929868,931874,1063373,928501,939055,1004535,974884,929420,912815,1201667,1058624,953108,1180638,930374,967547,1123428,933301,1252684
+        -clusterid=USARoleplay
+        -clusterid=USARoleplay
+        -ClusterDirOverride="/home/gameserver/cluster-shared"
+      - ENABLE_DEBUG=0
+    ports:
+      - 7779:7777/udp
+      - 27022:27020/tcp
+    depends_on:
+      - set-permissions-1
+    volumes:
+      - steam-1:/home/gameserver/Steam:rw
+      - steamcmd-1:/home/gameserver/steamcmd:rw
+      - server-files-1:/home/gameserver/server-files:rw
+      - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - asa-network # end of helth check option. remove if this doesn't work
+    restart: unless-stopped
+
+  set-permissions-1:
+    container_name: fix-perms-eden
+    image: "alpine:latest"
+    entrypoint: >
+      /bin/sh -c "
+      chown -R 25000:25000 /steam &&
+      chown -R 25000:25000 /steamcmd &&
+      chown -R 25000:25000 /server-files &&
+      chown -R 25000:25000 /cluster-shared"
+    user: root
+    volumes:
+      - steam-1:/steam:rw
+      - steamcmd-1:/steamcmd:rw
+      - server-files-1:/server-files:rw
+      - /mnt/ark_cluster:/cluster-shared:rw
+
+volumes:
+  steam-1:
+  steamcmd-1:
+  server-files-1:
+
+networks:
+  asa-network:
+    external: true
+    name: asanet
+    
+# Network has to be created prior to booting container using the commands below:
+# docker network create \
+#   --driver bridge \
+#   --opt com.docker.network.bridge.name=asanet \
+#   asanet
