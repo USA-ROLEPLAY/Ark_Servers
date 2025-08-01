@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
   set-permissions-1:
-    container_name: fix-perms-svartalfheim
+    container_name: fix-perms-necrotic-dominion
     image: "alpine:latest"
     entrypoint: >
       /bin/sh -c "
