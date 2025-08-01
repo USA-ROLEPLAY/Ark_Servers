@@ -17,8 +17,8 @@ services:
         -ClusterDirOverride="/home/gameserver/cluster-shared"
       - ENABLE_DEBUG=0
     ports:
-      - 7799:7777/udp
-      - 27040:27020/tcp
+      - 7779:7777/udp
+      - 27022:27020/tcp
     depends_on:
       - set-permissions-1
     volumes:
@@ -54,7 +54,11 @@ volumes:
 
 networks:
   asa-network:
-    attachable: true
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: 'asanet'
+    external: true
+    name: asanet
+    
+# Network has to be created prior to booting container using the commands below:
+# docker network create \
+#   --driver bridge \
+#   --opt com.docker.network.bridge.name=asanet \
+#   asanet
