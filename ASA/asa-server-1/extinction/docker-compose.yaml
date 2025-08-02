@@ -20,7 +20,7 @@ services:
       - 7779:7777/udp
       - 27022:27020/tcp
     depends_on:
-      - set-permissions-1
+      - set-permissions-3
     volumes:
       - steam-3:/home/gameserver/Steam:rw
       - steamcmd-3:/home/gameserver/steamcmd:rw
@@ -31,7 +31,7 @@ services:
       - asa-network
     restart: unless-stopped
 
-  set-permissions-1:
+  set-permissions-3:
     container_name: fix-perms-extinction
     image: "alpine:latest"
     entrypoint: >
