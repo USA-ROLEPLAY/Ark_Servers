@@ -1,15 +1,15 @@
 ---
 services:
   asa-server:
-    container_name: asa-server-scortched-earth
-    hostname: asa-server-scortched-earth
+    container_name: asa-server-scorched-earth
+    hostname: asa-server-scorched-earth
     entrypoint: "/usr/bin/start_server"
     user: gameserver
     image: "mschnitzer/asa-linux-server:1.4.1"
     tty: true
     environment:
       - >-
-        ASA_START_PARAMS=ScortchedEarth_WP?listen?Port=7778?RCONPort=27021?RCONEnabled=True
+        ASA_START_PARAMS=ScorchedEarth_WP?listen?Port=7778?RCONPort=27021?RCONEnabled=True
         -WinLiveMaxPlayers=50
         -mods=1065717,986540,929578,1133222,930442,947733,1066017,948965,940786,1122696,1019389,970540,935528,928548,942024,929838,929868,931874,1063373,928501,939055,1004535,974884,929420,912815,1201667,1058624,953108,1180638,930374,967547,1123428,933301,1252684
         -clusterid=USARoleplay
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
 
   set-permissions-1:
-    container_name: fix-perms-scortched-earth
+    container_name: fix-perms-scorched-earth
     image: "alpine:latest"
     entrypoint: >
       /bin/sh -c "
