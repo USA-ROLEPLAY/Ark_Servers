@@ -3,8 +3,8 @@ services:
   asa-server:
     # container_name: asa-server-theisland
     hostname: asa-server-theisland
-    # entrypoint: "/usr/bin/start_server"
     network_mode: host
+    # entrypoint: "/usr/bin/start_server"
     entrypoint: "/bin/sh -c 'exec /usr/bin/start_server'"
     user: gameserver
     image: "mschnitzer/asa-linux-server:1.4.1"
