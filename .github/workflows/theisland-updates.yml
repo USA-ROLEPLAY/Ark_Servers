@@ -24,41 +24,45 @@ jobs:
 
       - name: Send Restart Notification (30 min warning)
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates"
-          '
+          OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+            ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates"
+            ')
+          echo "$OUTPUT"
 
       - name: Wait 15 minutes before second warning
         run:  30 # Prod time: sleep 900
 
       - name: Send Restart Notification (15 min warning)
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates"
-          '
+           OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+             ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+               docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates"
+             ')
+           echo "$OUTPUT"
       
       - name: Wait 12 minutes before final warning
         run: 30 # Prod time: sleep 720
 
       - name: Send Restart Notification (3 min warning)
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe"
-          '
+          OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+            ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe"
+            ')
+          echo "$OUTPUT"
 
       - name: Wait 3 minutes before reboot 
         run: 30 # Prod time: sleep 180
 
       - name: Send Save World & Shutdown Notification
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates" &&
-            docker exec asa-server-theisland asa-ctrl rcon --exec "saveworld"
-          '
+          OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+            ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates" &&
+              docker exec asa-server-theisland asa-ctrl rcon --exec "saveworld"
+            ')
+          echo "$OUTPUT"
 
       - name: Stop ASA The Island Container
         run: |
