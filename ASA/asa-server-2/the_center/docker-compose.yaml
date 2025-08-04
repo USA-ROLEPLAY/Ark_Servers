@@ -1,8 +1,9 @@
 ---
 services:
   asa-server:
-    # container_name: asa-server-theisland
+    container_name: asa-server-thecenter
     hostname: asa-server-thecenter
+    network_mode: host
     # entrypoint: "/usr/bin/start_server"
     entrypoint: "/bin/sh -c 'exec /usr/bin/start_server'"
     user: gameserver
@@ -27,8 +28,6 @@ services:
       - server-files-3:/home/gameserver/server-files:rw
       - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
       - /etc/localtime:/etc/localtime:ro
-    networks:
-      - asa-network
     restart: unless-stopped
 
   set-permissions-1:
@@ -51,14 +50,3 @@ volumes:
   steam-3:
   steamcmd-3:
   server-files-3:
-
-networks:
-  asa-network:
-    external: true
-    name: asanet
-    
-# Network has to be created prior to booting container using the commands below:
-# docker network create \
-#   --driver bridge \
-#   --opt com.docker.network.bridge.name=asanet \
-#   asanet
