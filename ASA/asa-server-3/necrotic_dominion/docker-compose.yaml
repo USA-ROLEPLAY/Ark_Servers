@@ -3,7 +3,8 @@ services:
   asa-server:
     container_name: asa-server-necrotic-dominion
     hostname: asa-server-necrotic-dominion
-    entrypoint: "/usr/bin/start_server"
+    network_mode: host
+    entrypoint: "/bin/sh -c 'exec /usr/bin/start_server'"
     user: gameserver
     image: "mschnitzer/asa-linux-server:1.4.1"
     tty: true
@@ -16,9 +17,6 @@ services:
         -clusterid=USARoleplay
         -ClusterDirOverride="/home/gameserver/cluster-shared"
       - ENABLE_DEBUG=0
-    ports:
-      - 7778:7777/udp
-      - 27021:27020/tcp
     depends_on:
       - set-permissions-1
     volumes:
@@ -27,8 +25,6 @@ services:
       - server-files-2:/home/gameserver/server-files:rw
       - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
       - /etc/localtime:/etc/localtime:ro
-    networks:
-      - asa-network # end of helth check option. remove if this doesn't work
     restart: unless-stopped
 
   set-permissions-1:
@@ -51,14 +47,3 @@ volumes:
   steam-2:
   steamcmd-2:
   server-files-2:
-  
-networks:
-  asa-network:
-    external: true
-    name: asanet
-    
-# Network has to be created prior to booting container using the commands below:
-# docker network create \
-#   --driver bridge \
-#   --opt com.docker.network.bridge.name=asanet \
-#   asanet
