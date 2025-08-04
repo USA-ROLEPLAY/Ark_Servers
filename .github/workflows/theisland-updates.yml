@@ -16,7 +16,6 @@ jobs:
     runs-on: all-runners
     timeout-minutes: 60
     
-
     steps:
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
