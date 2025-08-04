@@ -5,7 +5,7 @@ on:
     paths:
       - 'ASA/asa-server-1/the_island/docker-compose.yaml'
     branches:
-      - ${{ secrets.MAIN_BRANCH }}
+      - main
 
 concurrency:
   group: asa-server-1-updates
