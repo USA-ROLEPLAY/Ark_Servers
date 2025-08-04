@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: all-runners
 
     steps:
       - name: Setup SSH Key
