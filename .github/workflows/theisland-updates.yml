@@ -66,22 +66,25 @@ jobs:
 
       - name: Stop ASA The Island Container
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            docker compose -f ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml down
-          '
+          OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+            ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+              docker compose -f ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml down
+            ')
+          echo "$OUTPUT"
 
       - name: Pull Repo Changes
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            cd ${{ secrets.ASA_SERVER_1_WORK_DIR }} &&
-            git pull origin ${{ secrets.MAIN_BRANCH }}
-          '
+          OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+                 ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+                 cd ${{ secrets.ASA_SERVER_1_WORK_DIR }} &&
+                 git pull origin ${{ secrets.MAIN_BRANCH }}
+                 ')
+          echo "$OUTPUT"
 
       - name: Restart The Island Container
         run: |
-          ssh -o StrictHostKeyChecking=no -p 33 \
-          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
-            docker compose -f ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml up -d
-          '
+          OUTPUT=$(ssh -o StrictHostKeyChecking=no -p 33 \
+                   ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+                     docker compose -f ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml up -d
+                   ')
+          echo "$OUTPUT"
