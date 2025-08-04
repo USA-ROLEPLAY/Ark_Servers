@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: all-runners
+    runs-on: self-hosted   # Use your self-hosted runner label here; ensure the runner is online and idle
     timeout-minutes: 60
     env:
       ACTIONS_RUNNER_DEBUG: true   # enable debug logging in runner
