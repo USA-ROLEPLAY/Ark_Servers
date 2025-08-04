@@ -1,0 +1,82 @@
+name: ASA The Island Server Update Workflow
+
+on:
+  push:
+    paths:
+      - 'ASA/asa-server-1/the_island/docker-compose.yaml'
+    branches:
+      - ${{ secrets.MAIN_BRANCH }}
+
+concurrency:
+  group: asa-server-updates
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Setup SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ASA_SERVER_1_PRIVATE_KEY }}
+
+      - name: Send Restart Notification (30 min warning)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates"
+          '
+
+      - name: Wait 15 minutes before second warning
+        run: sleep 900
+
+      - name: Send Restart Notification (15 min warning)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates"
+          '
+      
+      - name: Wait 12 minutes before final warning
+        run: sleep 720
+
+      - name: Send Restart Notification (3 min warning)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe"
+          '
+
+      - name: Wait 3 minutes before reboot 
+        run: sleep 180
+
+      - name: Send Save World & Shutdown Notification
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates" &&
+            docker exec asa-server-theisland asa-ctrl rcon --exec "saveworld"
+          '
+
+      - name: Stop ASA The Island Container
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            docker compose -f ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml down
+          '
+
+      - name: Pull Repo Changes
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            cd ${{ secrets.ASA_SERVER_1_WORK_DIR }} &&
+            git pull origin ${{ secrets.MAIN_BRANCH }}
+          '
+
+      - name: Restart The Island Container
+        run: |
+          ssh -o StrictHostKeyChecking=no -p 33 \
+          ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '
+            docker compose -f ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml up -d
+          '
