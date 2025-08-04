@@ -3,7 +3,8 @@ services:
   asa-server:
     container_name: asa-server-eden
     hostname: asa-server-eden
-    entrypoint: "/usr/bin/start_server"
+    network_mode: host
+    entrypoint: "/bin/sh -c 'exec /usr/bin/start_server'"
     user: gameserver
     image: "mschnitzer/asa-linux-server:1.4.1"
     tty: true
@@ -27,8 +28,6 @@ services:
       - server-files-1:/home/gameserver/server-files:rw
       - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
       - /etc/localtime:/etc/localtime:ro
-    networks:
-      - asa-network # end of helth check option. remove if this doesn't work
     restart: unless-stopped
 
   set-permissions-1:
@@ -51,14 +50,3 @@ volumes:
   steam-1:
   steamcmd-1:
   server-files-1:
-
-networks:
-  asa-network:
-    external: true
-    name: asanet
-    
-# Network has to be created prior to booting container using the commands below:
-# docker network create \
-#   --driver bridge \
-#   --opt com.docker.network.bridge.name=asanet \
-#   asanet
