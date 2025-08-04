@@ -27,7 +27,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.ASA_SERVER_1_PRIVATE_KEY }}
 
-            - name: Debug Info
+      - name: Debug Info
         run: |
           set -x
           echo "Runner labels: ${{ runner.labels }}"
@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
 
-      - name: Send Restart Notification (30 sec warning) (30 sec warning)
+      - name: Send Restart Notification (30 sec warning)
         run: |
           set -x
           echo "==> Sending 30s warning to ASA The Island"
@@ -86,4 +86,4 @@ jobs:
           echo "==> Pulling & restarting container"
           ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p 33 \
               ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            "cd ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island && docker compose pull && docker compose up -d"
+            "cd ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island && docker compose pull && 
