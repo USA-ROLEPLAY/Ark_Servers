@@ -3,6 +3,7 @@ services:
   asa-server:
     container_name: asa-server-scorched-earth
     hostname: asa-server-scorched-earth
+    network_mode: host
     entrypoint: "/usr/bin/start_server"
     user: gameserver
     image: "mschnitzer/asa-linux-server:1.4.1"
@@ -15,9 +16,6 @@ services:
         -clusterid=USARoleplay
         -ClusterDirOverride="/home/gameserver/cluster-shared"
       - ENABLE_DEBUG=0
-    ports:
-      - 7778:7777/udp
-      - 27021:27020/tcp
     depends_on:
       - set-permissions-2
     volumes:
@@ -50,14 +48,3 @@ volumes:
   steam-2:
   steamcmd-2:
   server-files-2:
-
-networks:
-  asa-network:
-    external: true
-    name: asanet
-    
-# Network has to be created prior to booting container using the commands below:
-# docker network create \
-#   --driver bridge \
-#   --opt com.docker.network.bridge.name=asanet \
-#   asanet
