@@ -17,9 +17,6 @@ services:
         -clusterid=USARoleplay
         -ClusterDirOverride="/home/gameserver/cluster-shared"
       - ENABLE_DEBUG=0
-    ports:
-      - 7777:7777/udp
-      - 27020:27020/tcp
     depends_on:
       - set-permissions-1
     volumes:
