@@ -1,7 +1,7 @@
 ---
 services:
   asa-server:
-    # container_name: asa-server-theisland
+    container_name: asa-server-theisland
     hostname: asa-server-theisland
     network_mode: host
     # entrypoint: "/usr/bin/start_server"
