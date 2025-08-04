@@ -24,8 +24,6 @@ services:
       - server-files-2:/home/gameserver/server-files:rw
       - /mnt/ark_cluster:/home/gameserver/cluster-shared:rw
       - /etc/localtime:/etc/localtime:ro
-    networks:
-      - asa-network
     restart: unless-stopped
 
   set-permissions-2:
