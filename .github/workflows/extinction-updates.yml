@@ -67,12 +67,15 @@ jobs:
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
             'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/extinction && sudo docker compose down'
 
-      - name: Pull Repo Changes
+      - name: Pull repo changes (force reset)
         run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            'cd ${{ secrets.WORK_DIR }} && git pull origin main'
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+          set -e
+          cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/extinction
+          git fetch origin main
+          git reset --hard origin/main
+          EOF
 
       - name: Restart Extinction Container
         run: |
