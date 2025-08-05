@@ -85,9 +85,9 @@ jobs:
           # inject only the admin password
           sed -i "s/\${SERVER_PASSWORD}/${{ secrets.ASA_ADMIN_SECRET }}/g" GameUserSettings.ini
           # replace the live settings file using sudo
-          sudo rm /var/lib/docker/volumes/extinction_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
+          sudo rm /var/lib/docker/volumes/extinction_server-files-3/_data/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
           sudo cp GameUserSettings.ini \
-             /var/lib/docker/volumes/extinction_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/
+             /var/lib/docker/volumes/extinction_server-files-3/_data/ShooterGame/Saved/Config/WindowsServer/
           EOF
 
       - name: Restart container
