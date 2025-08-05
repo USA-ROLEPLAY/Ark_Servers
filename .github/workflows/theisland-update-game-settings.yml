@@ -56,7 +56,7 @@ jobs:
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            'sudo docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates. You may notice a blimp but shouldn't disconnect" && \
+            'sudo docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
              sudo docker exec asa-server-theisland asa-ctrl rcon --exec "saveworld"'
 
       - name: Stop ASA The Island Container
@@ -80,9 +80,9 @@ jobs:
           cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/the_island
           # inject only the admin password
           sed -i "s/\${SERVER_PASSWORD}/${{ secrets.ASA_ADMIN_SECRET }}/g" GameUserSettings.ini
-          # replace the live settings file
-          rm /var/lib/docker/volumes/the_island_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
-          cp GameUserSettings.ini \
+          # replace the live settings file using sudo
+          sudo rm /var/lib/docker/volumes/the_island_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
+          sudo cp GameUserSettings.ini \
              /var/lib/docker/volumes/the_island_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/
           EOF
 
