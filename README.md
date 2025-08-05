@@ -1,2 +1,4 @@
 # Ark_Servers
 Repo for Ark server containers 
+
+# TO ADD MODS MODIFY THE DOCKER-COMPOSE.YAML FILES NOT THE GAMEUSERSETTINGS.INI
