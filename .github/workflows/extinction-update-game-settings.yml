@@ -1,0 +1,97 @@
+name: ASA Extinction GameUserSettings Update Workflow
+
+on:
+  push:
+    paths:
+      - 'ASA/asa-server-1/extinction/GameUserSettings.ini'
+    branches:
+      - 'main'
+
+concurrency:
+  group: asa-server-1-updates
+  cancel-in-progress: false
+
+jobs:
+  update-settings:
+    runs-on: self-hosted
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+
+      - name: Send Restart Notification (30 min warning)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
+            'sudo docker exec asa-server-extinction asa-ctrl rcon --exec "serverchat Server updating settings in 30 minutes"'
+
+      - name: Wait 15 minutes
+        run: sleep 30 # testing
+
+      - name: Send Restart Notification (15 min warning)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
+            'sudo docker exec asa-server-extinction asa-ctrl rcon --exec "serverchat Server updating settings in 15 minutes"'
+
+      - name: Wait 12 minutes
+        run: sleep 30 # testing
+
+      - name: Send Restart Notification (3 min warning)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
+            'sudo docker exec asa-server-extinction asa-ctrl rcon --exec "serverchat Server updating settings in 3 minutes. Final warning!"'
+
+      - name: Wait 3 minutes
+        run: sleep 30 # teting
+
+      - name: Send Save World & Shutdown Notification
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
+            'sudo docker exec asa-server-extinction asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
+             sudo docker exec asa-server-extinction asa-ctrl rcon --exec "saveworld"'
+
+      - name: Stop ASA Extinction Container
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
+            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/extinction && sudo docker compose down'
+
+      - name: Pull repo changes (force reset)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+          set -e
+          cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/extinction
+          git fetch origin main
+          git reset --hard origin/main
+          EOF
+
+      - name: Inject admin password and replace GameUserSettings.ini
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+          set -e
+          cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/extinction
+          # inject only the admin password
+          sed -i "s/\${SERVER_PASSWORD}/${{ secrets.ASA_ADMIN_SECRET }}/g" GameUserSettings.ini
+          # replace the live settings file using sudo
+          sudo rm /var/lib/docker/volumes/extinction_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
+          sudo cp GameUserSettings.ini \
+             /var/lib/docker/volumes/extinction_server-files-1/_data/ShooterGame/Saved/Config/WindowsServer/
+          EOF
+
+      - name: Restart container
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
+            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/extinction && sudo docker compose up -d'
