@@ -66,11 +66,15 @@ jobs:
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
             'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/the_island && sudo docker compose down'
 
-      - name: Pull repo changes
+      - name: Pull repo changes (force reset)
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/the_island && git pull origin main'
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+          set -e
+          cd ${{ secrets.WORK_DIR }}/ASA/asa-server-1/the_island
+          git fetch origin main
+          git reset --hard origin/main
+          EOF
 
       - name: Inject admin password and replace GameUserSettings.ini
         run: |
