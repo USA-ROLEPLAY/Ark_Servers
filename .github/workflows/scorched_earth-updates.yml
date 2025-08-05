@@ -8,7 +8,7 @@ on:
       - 'main'
 
 concurrency:
-  group: asa-server-updates
+  group: asa-server-1-updates
   cancel-in-progress: false
 
 jobs:
