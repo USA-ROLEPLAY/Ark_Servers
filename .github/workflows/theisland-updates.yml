@@ -1,11 +1,11 @@
-name: ASA The Island Server Update Workflow (Test Mode)
+name: ASA The Island Server Update Workflow
 
 on:
   push:
     paths:
       - 'ASA/asa-server-1/the_island/docker-compose.yaml'
     branches:
-      - main
+      - ${{ secrets.MAIN_BRANCH }}
 
 concurrency:
   group: asa-server-updates
@@ -13,77 +13,64 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: self-hosted   # Use your self-hosted runner label here; ensure the runner is online and idle
+    runs-on: all-runners
     timeout-minutes: 60
-    env:
-      ACTIONS_RUNNER_DEBUG: true   # enable debug logging in runner
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
       - name: Setup SSH Key
-        uses: webfactory/ssh-agent@v0.9.1
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.ASA_SERVER_1_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
-      - name: Debug Info
+      - name: Send Restart Notification (30 min warning)
         run: |
-          set -x
-          echo "Runner labels: ${{ runner.labels }}"
-          echo "Branch: $GITHUB_REF"
-          echo "Commit SHA: $GITHUB_SHA"
-          echo "==> Checking SSH port connectivity via /dev/tcp"
-          # Use bash built-in TCP check instead of netcat
-          if timeout 5 bash -c "</dev/tcp/${{ secrets.ASA_SERVER_1_SSH_HOST }}/33"; then
-            echo "Port 33 is reachable"
-          else
-            echo "Port 33 is NOT reachable"
-            exit 1
-          fi
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates"'
 
-      - name: Send Restart Notification (30 sec warning)
-        run: |
-          set -x
-          echo "==> Sending 30s warning to ASA The Island"
-          ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p 33 \
-              ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            "docker exec asa-server-theisland asa-ctrl rcon --exec \"serverchat [TEST] Restarting in 30 seconds for update\""
+      - name: Wait 15 minutes before second warning
+        run: sleep 900
 
-      - name: Wait 30 seconds before update
+      - name: Send Restart Notification (15 min warning)
         run: |
-          set -x
-          echo "==> Sleeping for 30s"
-          sleep 30
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates"'
 
-      - name: Save World & Shutdown Notification
+      - name: Wait 12 minutes before final warning
+        run: sleep 720
+
+      - name: Send Restart Notification (3 min warning)
         run: |
-          set -x
-          echo "==> Sending saveworld & shutdown notification"
-          ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p 33 \
-              ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            "docker exec asa-server-theisland asa-ctrl rcon --exec \"serverchat [TEST] Saving world and shutting down for update\" && docker exec asa-server-theisland asa-ctrl rcon --exec \"saveworld\""
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe"'
+
+      - name: Wait 3 minutes before reboot
+        run: sleep 180
+
+      - name: Send Save World & Shutdown Notification
+        run: |
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates" && \
+              docker exec asa-server-theisland asa-ctrl rcon --exec "saveworld"'
 
       - name: Stop ASA The Island Container
         run: |
-          set -x
-          echo "==> Stopping container via docker compose down"
-          ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p 33 \
-              ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            "cd ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island && docker compose down --timeout 30"
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              docker compose -f ${{ secrets.WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml down'
 
       - name: Pull Repo Changes
         run: |
-          set -x
-          echo "==> Pulling latest changes"
-          ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p 33 \
-              ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            "cd ${{ secrets.ASA_SERVER_1_WORK_DIR }} && git pull origin main"
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              cd ${{ secrets.WORK_DIR }} && \
+              git pull origin ${{ secrets.MAIN_BRANCH }}'
 
       - name: Restart The Island Container
         run: |
-          set -x
-          echo "==> Pulling & restarting container"
-          ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no -p 33 \
-              ${{ secrets.ASA_SERVER_1_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} \
-            "cd ${{ secrets.ASA_SERVER_1_WORK_DIR }}/ASA/asa-server-1/the_island && docker compose pull && 
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} '\
+              docker compose -f ${{ secrets.WORK_DIR }}/ASA/asa-server-1/the_island/docker-compose.yaml up -d'
