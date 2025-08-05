@@ -31,7 +31,7 @@ jobs:
             'sudo docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server updating settings in 30 minutes"'
 
       - name: Wait 15 minutes
-        run: sleep 900
+        run: sleep 30 # testing
 
       - name: Send Restart Notification (15 min warning)
         run: |
@@ -40,7 +40,7 @@ jobs:
             'sudo docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server updating settings in 15 minutes"'
 
       - name: Wait 12 minutes
-        run: sleep 720
+        run: sleep 30 # testing
 
       - name: Send Restart Notification (3 min warning)
         run: |
@@ -49,7 +49,7 @@ jobs:
             'sudo docker exec asa-server-theisland asa-ctrl rcon --exec "serverchat Server updating settings in 3 minutes. Final warning!"'
 
       - name: Wait 3 minutes
-        run: sleep 180
+        run: sleep 30 # teting
 
       - name: Send Save World & Shutdown Notification
         run: |
