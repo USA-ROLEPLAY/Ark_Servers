@@ -23,7 +23,7 @@ jobs:
       - name: Setup SSH key
         uses: webfactory/ssh-agent@v0.9.1
         with:
-          ssh-private-key: ${{ secrets.ASA_SERVERS_3_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.ASA_SERVER_3_PRIVATE_KEY }}
 
       - name: Send Restart Notification (30 min warning)
         run: |
