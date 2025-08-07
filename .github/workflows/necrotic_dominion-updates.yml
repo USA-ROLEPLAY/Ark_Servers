@@ -1,0 +1,85 @@
+name: ASA Necrotic Dominion Server Update Workflow
+
+on:
+  push:
+    paths:
+      - 'ASA/asa-server-3/necrotic_dominion/docker-compose.yaml'
+    branches:
+      - 'main'
+
+concurrency:
+  group: asa-server-3-updates
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 60
+
+    steps:
+      - name: Setup SSH Key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.ASA_SERVERS_3_PRIVATE_KEY }}
+
+      - name: Send Restart Notification (30 min warning)
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates. Get somewhere safe. You should NOT disconnect"'
+
+      - name: Wait 15 minutes before second warning
+        run: sleep 900
+
+      - name: Send Restart Notification (15 min warning)
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates. Get somewhere safe. You should NOT disconnect"'
+
+      - name: Wait 12 minutes before final warning
+        run: sleep 720
+
+      - name: Send Restart Notification (3 min warning)
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe. You should NOT disconnect"'
+
+      - name: Wait 3 minutes before reboot
+        run: sleep 180
+
+      - name: Send Save World & Shutdown Notification
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates. You may notice a blimp but shouldn't disconnect" && \
+             sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "saveworld"'
+
+      - name: Stop ASA Necrotic Dominion Container
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/necrotic_dominion && sudo docker compose down'
+
+      - name: Pull repo changes (force reset)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} << 'EOF'
+          set -e
+          cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/necrotic_dominion
+          git fetch origin main
+          git reset --hard origin/main
+          EOF
+
+      - name: Restart The Island Container
+        run: |
+          set -x
+          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/necrotic_dominion && sudo docker compose up -d'
