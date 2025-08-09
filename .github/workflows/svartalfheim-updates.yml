@@ -20,7 +20,7 @@ jobs:
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.1
         with:
-          ssh-private-key: ${{ secrets.ASA_SERVER_3_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
       - name: Send Restart Notification (30 min warning)
         run: |
@@ -77,7 +77,7 @@ jobs:
           git reset --hard origin/main
           EOF
 
-      - name: Restart The Island Container
+      - name: Restart The Svartalfheim Container
         run: |
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
