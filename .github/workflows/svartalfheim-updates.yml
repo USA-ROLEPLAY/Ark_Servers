@@ -50,7 +50,7 @@ jobs:
             'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe. You should NOT disconnect"'
 
       - name: Wait 3 minutes before reboot
-        run: sleep # Testing
+        run: sleep 30 # Testing
 
       - name: Send Save World & Shutdown Notification
         run: |
