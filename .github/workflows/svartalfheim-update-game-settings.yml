@@ -60,7 +60,7 @@ jobs:
             'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
              sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "saveworld"'
 
-      - name: Stop ASA The Island Container
+      - name: Stop ASA Svartalfheim Container
         run: |
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
