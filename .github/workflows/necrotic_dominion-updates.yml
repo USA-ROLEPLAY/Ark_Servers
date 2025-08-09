@@ -27,7 +27,7 @@ jobs:
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates. Get somewhere safe. You should NOT disconnect"'
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates. Get somewhere safe."'
 
       - name: Wait 15 minutes before second warning
         run: sleep 30 # Testing
@@ -37,7 +37,7 @@ jobs:
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates. Get somewhere safe. You should NOT disconnect"'
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates. Get somewhere safe."'
 
       - name: Wait 12 minutes before final warning
         run: sleep 30 # Testing
@@ -47,7 +47,7 @@ jobs:
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe. You should NOT disconnect"'
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe."'
 
       - name: Wait 3 minutes before reboot
         run: sleep 30 # Testing
@@ -57,7 +57,7 @@ jobs:
           set -x
           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates. You may notice a blimp but should not disconnect" && \
+            'sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
              sudo docker exec asa-server-necrotic-dominion asa-ctrl rcon --exec "saveworld"'
 
       - name: Stop ASA Necrotic Dominion Container
