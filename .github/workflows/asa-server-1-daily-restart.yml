@@ -38,7 +38,7 @@ jobs:
           LIST=$(sudo docker ps --format '{{.Names}} {{.Image}}' | grep -i 'asa-linux-server' | awk '{print $1}' || true)
           if [ -z "$LIST" ]; then echo "No ARK containers found; exiting."; exit 0; fi
           for c in $LIST; do
-            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for maintenance. Get somewhere safe."
+            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for daily reset. Get somewhere safe."
           done
           echo "$LIST" > /tmp/ark_list.txt
           EOF
@@ -54,7 +54,7 @@ jobs:
           LIST=$(cat /tmp/ark_list.txt || true)
           if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
           for c in $LIST; do
-            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for maintenance. Get somewhere safe."
+            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for daily reset. Get somewhere safe."
           done
           EOF
 
