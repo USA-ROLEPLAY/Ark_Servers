@@ -7,7 +7,7 @@ on:
     - cron: '0 12 * * *'  # 07:00 during Standard Time
 
 concurrency:
-  group: asa-server-1-daily-restart
+  group: asa-server-1-updates
   cancel-in-progress: false
 
 jobs:
