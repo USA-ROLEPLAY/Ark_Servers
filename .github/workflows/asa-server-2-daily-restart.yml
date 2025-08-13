@@ -23,7 +23,7 @@ jobs:
 
     steps:
       # Checkout avoids weird self-hosted issues pulling marketplace actions
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.1
