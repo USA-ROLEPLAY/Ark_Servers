@@ -1,0 +1,65 @@
+1. No Cheating or Exploiting
+
+Cheats, hacks, dupes, mesh, macros, or other unintended mechanics are strictly prohibited. 
+Automated detection is active. You will be banned and appeals require evidence - just don't do it
+
+2. Respect All Players
+
+No harassment, hate speech, doxxing, or targeted abuse in chat or DMs. Keep comms helpful and chill—this is PvE.
+
+3. PvE-Only Gameplay
+
+PvP happens only when BOTH tribes publicly declare a Clan War. 
+Otherwise, do not grief or sabotage players. Indirect griefing—boxing, body-blocking, caging, trapping beds/TPs, or stealing—is treated as PvP and penalized. Unlocked ≠ consent.
+
+4. Base Location Restrictions
+
+Do not build where it blocks key resources, artifacts,explorer notes, obelisks, mission terminals, supply drops, or major spawns. 
+Each tribe may keep 1 main base + 1 outpost per map. 
+Perimeter walls are fine—just keep them reasonable to avoid performance issues.
+
+5. Tame & Structure Limits
+
+Follow posted tame/structure caps. 
+Keep breeding pens tidy (disable wandering, clean babies/eggs); cryo storage when idle. 
+If an admin asks you to reduce, do so within a reasonable window.
+
+Do not spam foundations or structures. If we see it you are gone... period
+
+Dead tames: If your dino dies due to in game events admins will not replace them. 
+You may collect their soul and try to go about getting them back via Oasisaur if you wish.
+
+You may server hop from PVE to PVP with your tamed dinos.
+Just be aware PVP Server Rules differ from PVE Server Rules. 
+If you loose your PVE tames in PVP admins will not replace them.
+
+6. World Etiquette
+
+Do not kite wilds, alphas, or bosses into bases or public areas. 
+Public traps/resource collectors must be set Unlocked and left clear; don’t claim or wall off community utilities. 
+No cave builds that restrict progression—clear after farming and let others pass.
+
+7. Drops / OBs / Terminals
+
+Do not camp or block. 
+Queue fairly—first-come, first-served. 
+Be patient during events this includes Shiny Dino spawns. 
+
+8. Trading & Economy
+
+Trade honestly in the Discord trade channels; admins may mediate disputes. 
+Trading outposts are allowed if tidy, accessible, and non-blocking. 
+Currency: earn 20 Coins/hour; 100 Copper = 1 Silver; 100 Silver = 1 Gold.
+
+9. Names & Builds
+
+No offensive/NSFW tribe, player, or dino names; no hateful symbols or signage. 
+Keep bases neat and visually reasonable for community vibes.
+
+10. Abandoned Structures & Tames
+
+After the decay timer, admins may remove or claim to free space and improve performance. If moving or quitting, demo extras and rehome/cryo excess tames.
+
+11. Admin & Enforcement
+
+Admin decisions are final. Penalties escalate from warnings to wipes/timeouts/bans. Report issues with screenshots and coords; false reports may be penalized.
