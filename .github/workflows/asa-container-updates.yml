@@ -16,7 +16,7 @@ permissions:
   pull-requests: write
 
 env:
-  # Short waits for testing; bump for prod if you want the full warning cadence
+  # Short waits for testing; bump for prod if desired
   WAIT_30M: "900"      # prod: 1800
   WAIT_15M: "720"      # prod: 900
   WAIT_3M:  "180"
@@ -144,7 +144,7 @@ jobs:
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose down"
 
       # --- Update the *on-host* checkout for that map (compose only) ---
-
+      # Uses basic-auth URL with the GitHub App token; disables terminal prompts.
       - name: Update host checkout to origin/main (compose changes)
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
@@ -152,11 +152,10 @@ jobs:
           cd "${{ env.WORK_DIR }}/${{ env.REPO_SUBDIR }}"
 
           TOKEN='${{ steps.app.outputs.token }}'
-          REPO_URL="https://github.com/${{ github.repository }}.git"
+          REPO_SLUG='${{ github.repository }}'
+          REPO_URL="https://x-access-token:${TOKEN}@github.com/${REPO_SLUG}.git"
 
-          git -c credential.helper= \
-              -c "http.https://github.com/.extraHeader=Authorization: Bearer ${TOKEN}" \
-              fetch "$REPO_URL" main
+          GIT_TERMINAL_PROMPT=0 git fetch --no-tags --prune "$REPO_URL" main
           git reset --hard FETCH_HEAD
           EOF
 
