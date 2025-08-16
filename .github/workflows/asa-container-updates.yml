@@ -1,4 +1,4 @@
-name: ASA Cluster Compose Deploy (with live GUS sync via GitHub App)
+name: ASA Cluster Compose Deploy (compose-only, PR live GUS changes)
 
 on:
   push:
@@ -12,18 +12,17 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write          # push PR branches
-  pull-requests: write     # open PRs
+  contents: write
+  pull-requests: write
 
 env:
-  # Warning cadence (use small values while testing; prod in comments)
-  WAIT_30M: "900"          # prod: 1800
-  WAIT_15M: "720"          # prod: 900
+  # Short waits for testing; bump for prod if you want the full warning cadence
+  WAIT_30M: "900"      # prod: 1800
+  WAIT_15M: "720"      # prod: 900
   WAIT_3M:  "180"
 
-  # Readiness timeouts
-  LOG_READY_TIMEOUT:  "600"     # 10m to see startup log
-  RCON_READY_TIMEOUT: "1200"    # 20m for RCON to answer
+  LOG_READY_TIMEOUT:  "600"    # 10m
+  RCON_READY_TIMEOUT: "1200"   # 20m
 
 jobs:
   build-matrix:
@@ -52,16 +51,12 @@ jobs:
           script: |
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
-            const changedRaw = `${{ steps.changed.outputs.all_changed_files }}` || '';
-            const changed = changedRaw.split('\n').filter(Boolean);
-
-            // Select targets whose path_glob prefix contains any changed file
+            const changed = (`${{ steps.changed.outputs.all_changed_files }}` || '').split('\n').filter(Boolean);
             const pick = [];
             for (const t of manifest.targets) {
               const prefix = t.path_glob.replace(/\/\*\*$/, '');
               if (changed.some(f => f.startsWith(prefix))) pick.push(t);
             }
-            // De-dupe by id
             const uniq = Object.values(Object.fromEntries(pick.map(t => [t.id, t])));
             core.setOutput('matrix', JSON.stringify(uniq));
 
@@ -75,7 +70,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
 
-    # Serialize per physical host so two maps on the same box don't restart together
+    # ensure two maps on the same physical host don't restart together
     concurrency:
       group: asa-deploy-${{ matrix.ssh_host_secret }}
       cancel-in-progress: false
@@ -85,20 +80,19 @@ jobs:
       SSH_PORT: ${{ secrets.ASA_SERVER_PORT }}
       HOST: ${{ secrets[matrix.ssh_host_secret] }}
       WORK_DIR: ${{ secrets.WORK_DIR }}
-      ADMIN_PASSWORD: ${{ secrets.ASA_ADMIN_SECRET }}
 
       REPO_SUBDIR: ${{ matrix.work_subdir }}
+      CNAME: ${{ matrix.container }}
       LIVE_WIN_DIR: /var/lib/docker/volumes/${{ matrix.volume }}/_data/ShooterGame/Saved/Config/WindowsServer
       REPO_INI_DIR: ${{ github.workspace }}/${{ matrix.work_subdir }}
       LIVE_TMP: live-${{ matrix.id }}
-      CNAME: ${{ matrix.container }}
 
     steps:
       - name: Mint GitHub App token
         id: app
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.APP_ID }}
+          app-id: ${{ secrets.APP_ID }}                # org secrets
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout (for PR diffs)
@@ -112,7 +106,8 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
-      # ----- Notify & stop -----
+      # --- Drain & stop ---
+
       - name: RCON 30m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
@@ -148,12 +143,13 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose down"
 
-      # ----- Repo -> host using short-lived App token (no deploy keys) -----
-      - name: Pull repo changes on host (force reset) and push INIs to live
+      # --- Update the *on-host* checkout for that map (compose only) ---
+
+      - name: Update host checkout to origin/main (compose changes)
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
           set -euo pipefail
-          cd "$WORK_DIR/$REPO_SUBDIR"
+          cd "${{ env.WORK_DIR }}/${{ env.REPO_SUBDIR }}"
 
           TOKEN='${{ steps.app.outputs.token }}'
           REPO_URL="https://github.com/${{ github.repository }}.git"
@@ -162,17 +158,6 @@ jobs:
               -c "http.https://github.com/.extraHeader=Authorization: Bearer ${TOKEN}" \
               fetch "$REPO_URL" main
           git reset --hard FETCH_HEAD
-
-          # Inject admin password ONLY on host copy (never committed)
-          if [ -f GameUserSettings.ini ]; then
-            sed -i 's/^ServerAdminPassword=.*/ServerAdminPassword=${{ env.ADMIN_PASSWORD }}/' GameUserSettings.ini || true
-            sudo cp -f GameUserSettings.ini "$LIVE_WIN_DIR"/
-          fi
-
-          # Game.ini is manual; still copy repo->live if present (no PR later)
-          if [ -f Game.ini ]; then
-            sudo cp -f Game.ini "$LIVE_WIN_DIR"/
-          fi
           EOF
 
       - name: Start container
@@ -180,17 +165,18 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose up -d"
 
-      # ----- Readiness gates (log marker + RCON ping) -----
+      # --- Readiness gates ---
+
       - name: Wait for startup log ("Starting the ARK...")
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
           set -euo pipefail
           CNAME='${{ env.CNAME }}'
           end=$((SECONDS+${{ env.LOG_READY_TIMEOUT }}))
-          until docker logs --tail 500 "$CNAME" 2>&1 | grep -q "Starting the ARK: Survival Ascended dedicated server"; do
+          until sudo docker logs --tail 500 "$CNAME" 2>&1 | grep -q "Starting the ARK: Survival Ascended dedicated server"; do
             if [ $SECONDS -gt $end ]; then
               echo "Timed out waiting for startup log." >&2
-              docker logs "$CNAME" --tail 200 >&2 || true
+              sudo docker logs "$CNAME" --tail 200 >&2 || true
               exit 1
             fi
             sleep 5
@@ -205,32 +191,34 @@ jobs:
           CNAME='${{ env.CNAME }}'
           end=$((SECONDS+${{ env.RCON_READY_TIMEOUT }}))
           while :; do
-            if docker exec "$CNAME" asa-ctrl rcon --exec "listplayers" >/dev/null 2>&1 \
-               || docker exec "$CNAME" asa-ctrl rcon --exec "serverchat healthcheck" >/dev/null 2>&1; then
+            if sudo docker exec "$CNAME" asa-ctrl rcon --exec "listplayers" >/dev/null 2>&1 \
+               || sudo docker exec "$CNAME" asa-ctrl rcon --exec "serverchat healthcheck" >/dev/null 2>&1; then
               echo "RCON is responsive."
               break
             fi
             if [ $SECONDS -gt $end ]; then
               echo "Timed out waiting for RCON readiness." >&2
-              docker logs "$CNAME" --tail 200 >&2 || true
+              sudo docker logs "$CNAME" --tail 200 >&2 || true
               exit 1
             fi
             sleep 5
           done
           EOF
 
-      # ----- Pull ONLY GameUserSettings.ini back, scrub, PR if changed -----
-      - name: Fetch live GameUserSettings.ini
+      # --- Live -> repo PR (ONLY GameUserSettings.ini) ---
+
+      - name: Fetch live GameUserSettings.ini (read-only mount)
         run: |
           mkdir -p "$LIVE_TMP"
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo cat '$LIVE_WIN_DIR/GameUserSettings.ini' || true" > "$LIVE_TMP/GameUserSettings.ini" || true
+            "sudo docker run --rm -v '${{ matrix.volume }}:/v:ro' alpine:3.19 \
+             sh -c 'if [ -f /v/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini ]; then cat /v/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini; fi'" \
+            > "$LIVE_TMP/GameUserSettings.ini" || true
 
       - name: Scrub admin password placeholder (do not commit secrets)
         run: |
           if [ -s "$LIVE_TMP/GameUserSettings.ini" ]; then
-            # Write literal ${SERVER_PASSWORD} (escape $)
-            sed -i 's/^ServerAdminPassword=.*/ServerAdminPassword=\${SERVER_PASSWORD}/' "$LIVE_TMP/GameUserSettings.ini"
+            sed -i 's|^ServerAdminPassword=.*$|ServerAdminPassword=\${SERVER_PASSWORD}|' "$LIVE_TMP/GameUserSettings.ini"
           fi
 
       - name: Diff & stage GameUserSettings.ini
@@ -263,3 +251,11 @@ jobs:
           delete-branch: true
           add-paths: |
             ${{ matrix.work_subdir }}/GameUserSettings.ini
+
+      - name: Summarize result
+        run: |
+          if [ "${{ steps.stage.outputs.changed }}" = "1" ]; then
+            echo "### GUS changed → PR opened" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### No GUS changes detected → no PR" >> "$GITHUB_STEP_SUMMARY"
+          fi
