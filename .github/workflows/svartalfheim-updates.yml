@@ -1,85 +1,85 @@
-name: ASA Svartalfheim Server Update Workflow
+# name: ASA Svartalfheim Server Update Workflow
 
-on:
-  push:
-    paths:
-      - 'ASA/asa-server-3/svartalfheim/docker-compose.yaml'
-    branches:
-      - 'main'
+# on:
+#   push:
+#     paths:
+#       - 'ASA/asa-server-3/svartalfheim/docker-compose.yaml'
+#     branches:
+#       - 'main'
 
-concurrency:
-  group: asa-server-3-updates
-  cancel-in-progress: false
+# concurrency:
+#   group: asa-server-3-updates
+#   cancel-in-progress: false
 
-jobs:
-  deploy:
-    runs-on: self-hosted
-    timeout-minutes: 60
+# jobs:
+#   deploy:
+#     runs-on: self-hosted
+#     timeout-minutes: 60
 
-    steps:
-      - name: Setup SSH Key
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+#     steps:
+#       - name: Setup SSH Key
+#         uses: webfactory/ssh-agent@v0.9.1
+#         with:
+#           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
-      - name: Send Restart Notification (30 min warning)
-        run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates. Get somewhere safe."'
+#       - name: Send Restart Notification (30 min warning)
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for updates. Get somewhere safe."'
 
-      - name: Wait 15 minutes before second warning
-        run: sleep 30 # Testing
+#       - name: Wait 15 minutes before second warning
+#         run: sleep 30 # Testing
 
-      - name: Send Restart Notification (15 min warning)
-        run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates. Get somewhere safe."'
+#       - name: Send Restart Notification (15 min warning)
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for updates. Get somewhere safe."'
 
-      - name: Wait 12 minutes before final warning
-        run: sleep 30 # Testing
+#       - name: Wait 12 minutes before final warning
+#         run: sleep 30 # Testing
 
-      - name: Send Restart Notification (3 min warning)
-        run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe."'
+#       - name: Send Restart Notification (3 min warning)
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe."'
 
-      - name: Wait 3 minutes before reboot
-        run: sleep 30 # Testing
+#       - name: Wait 3 minutes before reboot
+#         run: sleep 30 # Testing
 
-      - name: Send Save World & Shutdown Notification
-        run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
-             sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "saveworld"'
+#       - name: Send Save World & Shutdown Notification
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
+#              sudo docker exec asa-server-svartalfheim asa-ctrl rcon --exec "saveworld"'
 
-      - name: Stop ASA Svartalfheim Container
-        run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/svartalfheim && sudo docker compose down'
+#       - name: Stop ASA Svartalfheim Container
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/svartalfheim && sudo docker compose down'
 
-      - name: Pull repo changes (force reset)
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} << 'EOF'
-          set -e
-          cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/svartalfheim
-          git fetch origin main
-          git reset --hard origin/main
-          EOF
+#       - name: Pull repo changes (force reset)
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} << 'EOF'
+#           set -e
+#           cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/svartalfheim
+#           git fetch origin main
+#           git reset --hard origin/main
+#           EOF
 
-      - name: Restart The Svartalfheim Container
-        run: |
-          set -x
-          ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
-            ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
-            'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/svartalfheim && sudo docker compose up -d'
+#       - name: Restart The Svartalfheim Container
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/svartalfheim && sudo docker compose up -d'
