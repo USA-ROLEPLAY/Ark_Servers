@@ -5,77 +5,88 @@
       "work_subdir": "ASA/asa-server-1/extinction",
       "container": "asa-server-extinction",
       "volume": "extinction_server-files-3",
-      "path_glob": "ASA/asa-server-1/extinction/**"
-    {,
+      "path_glob": "ASA/asa-server-1/extinction/**",
+      "ssh_host_secret": "ASA_SERVER_1_SSH_HOST"
+    },
     {
       "id": "asa-server-1-scorchedearth",
       "work_subdir": "ASA/asa-server-1/scorched_earth",
       "container": "asa-server-scorched-earth",
       "volume": "scorched_earth_server-files-2",
-      "path_glob": "ASA/asa-server-1/scorched_earth/**"
+      "path_glob": "ASA/asa-server-1/scorched_earth/**",
+      "ssh_host_secret": "ASA_SERVER_1_SSH_HOST"
     },
     {
       "id": "asa-server-1-theisland",
       "work_subdir": "ASA/asa-server-1/the_island",
       "container": "asa-server-theisland",
       "volume": "the_island_server-files-1",
-      "path_glob": "ASA/asa-server-1/the_island/**"
+      "path_glob": "ASA/asa-server-1/the_island/**",
+      "ssh_host_secret": "ASA_SERVER_1_SSH_HOST"
     },
     {
       "id": "asa-server-2-astraeos",
       "work_subdir": "ASA/asa-server-2/astraeos",
       "container": "asa-server-astraeos",
       "volume": "astraeos_server-files-1",
-      "path_glob": "ASA/asa-server-2/astraeos/**"
+      "path_glob": "ASA/asa-server-2/astraeos/**",
+      "ssh_host_secret": "ASA_SERVER_2_SSH_HOST"
     },
     {
       "id": "asa-server-2-ragnarok",
       "work_subdir": "ASA/asa-server-2/ragnarok",
       "container": "asa-server-ragnarok",
       "volume": "ragnarok_server-files-2",
-      "path_glob": "ASA/asa-server-2/ragnarok/**"
+      "path_glob": "ASA/asa-server-2/ragnarok/**",
+      "ssh_host_secret": "ASA_SERVER_2_SSH_HOST"
     },
     {
       "id": "asa-server-2-thecenter",
       "work_subdir": "ASA/asa-server-2/the_center",
       "container": "asa-server-thecenter",
       "volume": "the_center_server-files-3",
-      "path_glob": "ASA/asa-server-2/the_center/**"
+      "path_glob": "ASA/asa-server-2/the_center/**",
+      "ssh_host_secret": "ASA_SERVER_2_SSH_HOST"
     },
     {
       "id": "asa-server-3-aberration",
       "work_subdir": "ASA/asa-server-3/aberration",
       "container": "asa-server-aberration",
       "volume": "aberration_server-files-3",
-      "path_glob": "ASA/asa-server-3/aberration/**"
+      "path_glob": "ASA/asa-server-3/aberration/**",
+      "ssh_host_secret": "ASA_SERVER_3_SSH_HOST"
     },
     {
       "id": "asa-server-3-necrotic-dominion",
       "work_subdir": "ASA/asa-server-3/necrotic_dominion",
       "container": "asa-server-necrotic-dominion",
       "volume": "necrotic_dominion_server-files-2",
-      "path_glob": "ASA/asa-server-3/necrotic_dominion/**"
+      "path_glob": "ASA/asa-server-3/necrotic_dominion/**",
+      "ssh_host_secret": "ASA_SERVER_3_SSH_HOST"
     },
     {
       "id": "asa-server-3-svartalfheim",
       "work_subdir": "ASA/asa-server-3/svartalfheim",
       "container": "asa-server-svartalfheim",
       "volume": "svartalfheim_server-files-1",
-      "path_glob": "ASA/asa-server-3/svartalfheim/**"
+      "path_glob": "ASA/asa-server-3/svartalfheim/**",
+      "ssh_host_secret": "ASA_SERVER_3_SSH_HOST"
     },
     {
       "id": "asa-server-4-eden",
       "work_subdir": "ASA/asa-server-4/eden",
       "container": "asa-server-eden",
       "volume": "eden_server-files-1",
-      "path_glob": "ASA/asa-server-4/eden/**"
+      "path_glob": "ASA/asa-server-4/eden/**",
+      "ssh_host_secret": "ASA_SERVER_4_SSH_HOST"
     },
     {
       "id": "asa-server-4-nyrandil",
       "work_subdir": "ASA/asa-server-4/nyrandil",
       "container": "asa-server-nyrandil",
       "volume": "nyrandil_server-files-2",
-      "path_glob": "ASA/asa-server-4/nyrandil/**"
+      "path_glob": "ASA/asa-server-4/nyrandil/**",
+      "ssh_host_secret": "ASA_SERVER_4_SSH_HOST"
     }
   ]
 }
