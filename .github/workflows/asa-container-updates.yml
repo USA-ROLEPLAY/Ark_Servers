@@ -266,9 +266,7 @@ jobs:
           delete-branch: true
           add-paths: |
             ${{ matrix.work_subdir }}/GameUserSettings.ini
-          # Optional: keep PR branch updated if main moves
-          # update-branch: true
-
+          
       - name: Summarize result
         if: always()
         run: |
