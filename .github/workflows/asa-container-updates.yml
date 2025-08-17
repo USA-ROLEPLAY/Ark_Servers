@@ -16,7 +16,6 @@ permissions:
   pull-requests: write
 
 env:
-  # Use whatever values you prefer (these are your current test values)
   WAIT_30M: "30"       # prod: 1800
   WAIT_15M: "30"       # prod: 900
   WAIT_3M:  "30"       # prod: 180
@@ -43,25 +42,20 @@ jobs:
           set -euo pipefail
           BEFORE="${{ github.event.before }}"
           AFTER="${{ github.sha }}"
-          # Fallback: if BEFORE is empty (rare), compare against the previous commit
+
           if [ -z "${BEFORE}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             BEFORE="$(git rev-parse HEAD~1)"
           fi
+          
           git --no-pager diff --name-only "$BEFORE" "$AFTER" -- 'ASA/**/docker-compose.yaml' > changed.txt || true
           echo "Changed compose files:"
           cat changed.txt || true
 
-          # Emit as JSON array so github-script can consume it safely
-          printf 'changed_json=[' > out.json
-          first=1
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            if [ $first -eq 0 ]; then printf ',' >> out.json; fi
-            printf '%s' "$(jq -Rn --arg s "$f" '$s')" >> out.json
-            first=0
-          done < changed.txt
-          printf ']\n' >> out.json
-          echo "list=$(cat out.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "list<<'EOF'"
+            cat changed.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
 
       - name: Build matrix from deploy/targets.json
@@ -72,11 +66,16 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const changed = JSON.parse(process.env.CHANGED || '[]'); // exact paths
-            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json', 'utf8'));
 
-            // For compose-only deploys, a target is included if its *compose path*
-            // (work_subdir/docker-compose.yaml) is in the changed set.
+            // Split newline list from previous step
+            const changed = (process.env.CHANGED || '')
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean);
+
+            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
+
+            // For compose-only deploys, include targets whose compose path changed
             const want = new Set(changed);
             const picks = [];
 
@@ -85,7 +84,7 @@ jobs:
               if (want.has(composePath)) picks.push(t);
             }
 
-            // De-dupe by id to be safe
+            // De-dupe by id
             const uniq = Object.values(Object.fromEntries(picks.map(t => [t.id, t])));
 
             core.info(`Changed compose files: ${changed.join(', ') || '(none)'}`);
