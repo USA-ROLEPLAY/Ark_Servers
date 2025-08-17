@@ -101,9 +101,10 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
 
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.1
+        uses: crazy-max/ghaction-ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
