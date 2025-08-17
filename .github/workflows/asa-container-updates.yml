@@ -1,4 +1,4 @@
-name: ASA Cluster Compose Deploy (compose-only, PR live GUS changes)
+name: ASA Cluster Compose Deploy
 
 on:
   push:
