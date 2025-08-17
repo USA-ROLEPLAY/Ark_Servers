@@ -46,13 +46,14 @@ jobs:
           if [ -z "${BEFORE}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             BEFORE="$(git rev-parse HEAD~1)"
           fi
-          
+
           git --no-pager diff --name-only "$BEFORE" "$AFTER" -- 'ASA/**/docker-compose.yaml' > changed.txt || true
+
           echo "Changed compose files:"
           cat changed.txt || true
 
           {
-            echo "list<<'EOF'"
+            echo "list<<EOF"
             cat changed.txt
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -62,29 +63,24 @@ jobs:
         id: mk-matrix
         uses: actions/github-script@v7
         env:
-          CHANGED: ${{ steps.cf.outputs.list }}
+          CHANGED: ${{ steps.cf.outputs.list }}   # newline-separated list from previous step
         with:
           script: |
             const fs = require('fs');
-
-            // Split newline list from previous step
             const changed = (process.env.CHANGED || '')
               .split('\n')
               .map(s => s.trim())
               .filter(Boolean);
 
-            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
+            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json', 'utf8'));
 
-            // For compose-only deploys, include targets whose compose path changed
             const want = new Set(changed);
             const picks = [];
-
             for (const t of manifest.targets) {
               const composePath = `${t.work_subdir.replace(/\/+$/,'')}/docker-compose.yaml`;
               if (want.has(composePath)) picks.push(t);
             }
 
-            // De-dupe by id
             const uniq = Object.values(Object.fromEntries(picks.map(t => [t.id, t])));
 
             core.info(`Changed compose files: ${changed.join(', ') || '(none)'}`);
