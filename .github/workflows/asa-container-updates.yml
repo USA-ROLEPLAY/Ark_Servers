@@ -17,9 +17,9 @@ permissions:
 
 env:
   # PRODUCTION waits (seconds)
-  WAIT_30M: "30" # prod-time: 1800
-  WAIT_15M: "30" # prod-time: 900
-  WAIT_3M:  "30" # prod-time: 180
+  WAIT_30M: "1800"
+  WAIT_15M: "900"
+  WAIT_3M:  "180"
 
   LOG_READY_TIMEOUT:  "600"    # 10m
   RCON_READY_TIMEOUT: "1200"   # 20m
@@ -71,7 +71,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
 
-    # ensure two maps on the same physical host don't restart together
+    # prevent two maps on the same physical host from restarting together
     concurrency:
       group: asa-deploy-${{ matrix.ssh_host_secret }}
       cancel-in-progress: false
@@ -93,8 +93,8 @@ jobs:
         id: app
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.APP_ID }}              # org secret
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}# org secret
 
       - name: Checkout (for PR diffs)
         uses: actions/checkout@v5
@@ -229,10 +229,10 @@ jobs:
         run: |
           if [ -s "$LIVE_TMP/GameUserSettings.ini" ]; then
             sed -i 's|^ServerAdminPassword=.*$|ServerAdminPassword=\${SERVER_PASSWORD}|' "$LIVE_TMP/GameUserSettings.ini"
-            perl -pi -e 's/\r$//' "$LIVE_TMP/GameUserSettings.ini" || true
+            (perl -pi -e 's/\r$//' "$LIVE_TMP/GameUserSettings.ini" 2>/dev/null || sed -i 's/\r$//' "$LIVE_TMP/GameUserSettings.ini" || true)
           fi
           if [ -f "$REPO_INI_DIR/GameUserSettings.ini" ]; then
-            perl -pi -e 's/\r$//' "$REPO_INI_DIR/GameUserSettings.ini" || true
+            (perl -pi -e 's/\r$//' "$REPO_INI_DIR/GameUserSettings.ini" 2>/dev/null || sed -i 's/\r$//' "$REPO_INI_DIR/GameUserSettings.ini" || true)
           fi
 
       - name: Diff & stage GameUserSettings.ini
@@ -252,6 +252,7 @@ jobs:
 
       - name: Create PR with updated GameUserSettings.ini
         if: steps.stage.outputs.changed == '1'
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ steps.app.outputs.token }}
@@ -264,10 +265,23 @@ jobs:
           delete-branch: true
           add-paths: |
             ${{ matrix.work_subdir }}/GameUserSettings.ini
+          # Optional: keep PR branch updated if main moves
+          # update-branch: true
 
       - name: Summarize result
+        if: always()
         run: |
+          set -euo pipefail
+          msg="No GUS changes detected → no PR"
           if [ "${{ steps.stage.outputs.changed }}" = "1" ]; then
-            echo "### GUS changed → PR opened" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "### No GUS changes detected → no PR" >> "$GITHUB_STEP_SUMMARY"
+            prnum="${{ steps.cpr.outputs.pull-request-number }}"
+            if [ -n "${prnum}" ]; then
+              msg="GUS changed → PR opened (#${prnum})"
+            else
+              msg="GUS changed → PR opened"
+            fi
+          fi
+          echo "$msg"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            echo "### $msg" >> "$GITHUB_STEP_SUMMARY"
+          fi
