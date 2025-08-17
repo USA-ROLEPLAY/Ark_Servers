@@ -36,33 +36,60 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Changed files (compose only)
-        id: changed
-        uses: tj-actions/changed-files@v45
-        with:
-          base_sha: ${{ github.event.before }}   # start of the push
-          sha:      ${{ github.sha }}            # end of the push
-          since_last_remote_commit: false
-          files: |
-            ASA/**/docker-compose.yaml
-          separator: "\n"
+      - name: Compute changed compose files (merge-safe)
+        id: cf
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          # Fallback: if BEFORE is empty (rare), compare against the previous commit
+          if [ -z "${BEFORE}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            BEFORE="$(git rev-parse HEAD~1)"
+          fi
+          git --no-pager diff --name-only "$BEFORE" "$AFTER" -- 'ASA/**/docker-compose.yaml' > changed.txt || true
+          echo "Changed compose files:"
+          cat changed.txt || true
+
+          # Emit as JSON array so github-script can consume it safely
+          printf 'changed_json=[' > out.json
+          first=1
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if [ $first -eq 0 ]; then printf ',' >> out.json; fi
+            printf '%s' "$(jq -Rn --arg s "$f" '$s')" >> out.json
+            first=0
+          done < changed.txt
+          printf ']\n' >> out.json
+          echo "list=$(cat out.json)" >> "$GITHUB_OUTPUT"
 
 
       - name: Build matrix from deploy/targets.json
         id: mk-matrix
         uses: actions/github-script@v7
+        env:
+          CHANGED: ${{ steps.cf.outputs.list }}
         with:
           script: |
             const fs = require('fs');
-            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
-            const changed = (`${{ steps.changed.outputs.all_changed_files }}` || '')
-              .split('\n').filter(Boolean);
-            const pick = [];
+            const changed = JSON.parse(process.env.CHANGED || '[]'); // exact paths
+            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json', 'utf8'));
+
+            // For compose-only deploys, a target is included if its *compose path*
+            // (work_subdir/docker-compose.yaml) is in the changed set.
+            const want = new Set(changed);
+            const picks = [];
+
             for (const t of manifest.targets) {
-              const prefix = t.path_glob.replace(/\/\*\*$/, '');
-              if (changed.some(f => f.startsWith(prefix))) pick.push(t);
+              const composePath = `${t.work_subdir.replace(/\/+$/,'')}/docker-compose.yaml`;
+              if (want.has(composePath)) picks.push(t);
             }
-            const uniq = Object.values(Object.fromEntries(pick.map(t => [t.id, t])));
+
+            // De-dupe by id to be safe
+            const uniq = Object.values(Object.fromEntries(picks.map(t => [t.id, t])));
+
+            core.info(`Changed compose files: ${changed.join(', ') || '(none)'}`);
+            core.info(`Selected targets: ${uniq.map(t => t.id).join(', ') || '(none)'}`);
             core.setOutput('matrix', JSON.stringify(uniq));
 
   deploy:
