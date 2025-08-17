@@ -40,9 +40,13 @@ jobs:
         id: changed
         uses: tj-actions/changed-files@v45
         with:
+          base_sha: ${{ github.event.before }}   # start of the push
+          sha:      ${{ github.sha }}            # end of the push
+          since_last_remote_commit: false
           files: |
             ASA/**/docker-compose.yaml
           separator: "\n"
+
 
       - name: Build matrix from deploy/targets.json
         id: mk-matrix
