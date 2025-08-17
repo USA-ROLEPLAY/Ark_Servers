@@ -16,10 +16,10 @@ permissions:
   pull-requests: write
 
 env:
-  # PRODUCTION waits (seconds)
-  WAIT_30M: "30" # Prod Times: 1800
-  WAIT_15M: "30" # Prod Times: 900
-  WAIT_3M:  "30" # Prod times: 180
+  # Use whatever values you prefer (these are your current test values)
+  WAIT_30M: "30"       # prod: 1800
+  WAIT_15M: "30"       # prod: 900
+  WAIT_3M:  "30"       # prod: 180
 
   LOG_READY_TIMEOUT:  "600"    # 10m
   RCON_READY_TIMEOUT: "1200"   # 20m
@@ -31,7 +31,7 @@ jobs:
       matrix: ${{ steps.mk-matrix.outputs.matrix }}
 
     steps:
-      - name: Checkout
+      - name: Checkout (matrix build only)
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -51,7 +51,8 @@ jobs:
           script: |
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
-            const changed = (`${{ steps.changed.outputs.all_changed_files }}` || '').split('\n').filter(Boolean);
+            const changed = (`${{ steps.changed.outputs.all_changed_files }}` || '')
+              .split('\n').filter(Boolean);
             const pick = [];
             for (const t of manifest.targets) {
               const prefix = t.path_glob.replace(/\/\*\*$/, '');
@@ -64,14 +65,12 @@ jobs:
     needs: build-matrix
     if: ${{ needs.build-matrix.outputs.matrix != '[]' }}
     runs-on: self-hosted
-    timeout-minutes: 90
 
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
 
-    # prevent two maps on the same physical host from restarting together
     concurrency:
       group: asa-deploy-${{ matrix.ssh_host_secret }}
       cancel-in-progress: false
@@ -93,27 +92,41 @@ jobs:
         id: app
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.APP_ID }}              
+          app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Checkout (for PR diffs)
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          token: ${{ steps.app.outputs.token }}
-          persist-credentials: false
+      # --- manual SSH agent (no action, no post-step) ---
+      - name: Start ssh-agent & add key
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(ssh-agent -s)"
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+          printf '%s\n' "${{ secrets.ASA_SERVERS_PRIVATE_KEY }}" | tr -d '\r' | ssh-add -
+          ssh-add -l
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+      # --- manual checkout of repo into workspace (no action, no post-step) ---
+      - name: Manual checkout (main)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          REPO_URL="https://x-access-token:${{ steps.app.outputs.token }}@github.com/${{ github.repository }}.git"
+          if [ -d .git ]; then
+            git remote set-url origin "$REPO_URL" || git remote add origin "$REPO_URL"
+            git fetch --no-tags --prune origin main
+            git checkout -B main origin/main
+          else
+            git clone --no-tags --single-branch --branch main "$REPO_URL" .
+          fi
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       # --- Drain & stop ---
-
       - name: RCON 30m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 30 minutes for updates. Get somewhere safe.\" || true"
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 30 minutes for updates. Get somewhere safe.\""
 
       - name: Wait 15m
         run: sleep ${{ env.WAIT_30M }}
@@ -121,7 +134,7 @@ jobs:
       - name: RCON 15m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 15 minutes for updates. Get somewhere safe.\" || true"
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 15 minutes for updates. Get somewhere safe.\""
 
       - name: Wait 12m
         run: sleep ${{ env.WAIT_15M }}
@@ -129,38 +142,23 @@ jobs:
       - name: RCON 3m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe.\" || true"
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe.\""
 
       - name: Wait 3m
         run: sleep ${{ env.WAIT_3M }}
 
-      - name: Saveworld & shutdown announce (robust)
+      - name: Saveworld & shutdown announce
         run: |
-          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
-          set -euo pipefail
-          CNAME='${{ env.CNAME }}'
-          # Announce (non-fatal if chat flakes)
-          sudo docker exec "$CNAME" asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." || echo "serverchat failed (non-fatal)"
-          # Try saveworld up to 5 times with a 30s timeout each
-          ok=0
-          for i in 1 2 3 4 5; do
-            if timeout 30 sudo docker exec "$CNAME" asa-ctrl rcon --exec "saveworld"; then
-              echo "saveworld OK on attempt $i"
-              ok=1
-              break
-            fi
-            echo "saveworld attempt $i failed; retrying in 10s…"
-            sleep 10
-          done
-          [ "$ok" = "1" ] || { echo "saveworld failed after retries" >&2; exit 1; }
-          EOF
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Saving world and shutting down for updates.\" && \
+             sudo docker exec '$CNAME' asa-ctrl rcon --exec \"saveworld\""
 
       - name: Stop container
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose down"
 
-      # --- Update the on-host checkout (compose only) ---
+      # --- Update on-host checkout for that map (compose only) ---
       - name: Update host checkout to origin/main (compose changes)
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
@@ -179,8 +177,7 @@ jobs:
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose up -d"
 
       # --- Readiness gates ---
-
-      - name: Wait for startup log ("Starting the ARK...")
+      - name: Wait for startup log ("Starting the ARK…")
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
           set -euo pipefail
@@ -194,6 +191,7 @@ jobs:
             fi
             sleep 5
           done
+          echo "Startup log observed."
           EOF
 
       - name: Wait for RCON to respond
@@ -205,6 +203,7 @@ jobs:
           while :; do
             if sudo docker exec "$CNAME" asa-ctrl rcon --exec "listplayers" >/dev/null 2>&1 \
                || sudo docker exec "$CNAME" asa-ctrl rcon --exec "serverchat healthcheck" >/dev/null 2>&1; then
+              echo "RCON is responsive."
               break
             fi
             if [ $SECONDS -gt $end ]; then
@@ -217,7 +216,6 @@ jobs:
           EOF
 
       # --- Live -> repo PR (ONLY GameUserSettings.ini) ---
-
       - name: Fetch live GameUserSettings.ini (read-only mount)
         run: |
           mkdir -p "$LIVE_TMP"
@@ -226,21 +224,23 @@ jobs:
              sh -c 'if [ -f /v/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini ]; then cat /v/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini; fi'" \
             > "$LIVE_TMP/GameUserSettings.ini" || true
 
-      - name: Scrub admin password & normalize EOL (LF)
+      - name: Scrub admin password & normalize line endings
         run: |
           if [ -s "$LIVE_TMP/GameUserSettings.ini" ]; then
+            # normalize CRLF to LF to avoid false diffs
+            sed -i 's/\r$//' "$LIVE_TMP/GameUserSettings.ini"
+            # scrub the admin password (never commit secrets)
             sed -i 's|^ServerAdminPassword=.*$|ServerAdminPassword=\${SERVER_PASSWORD}|' "$LIVE_TMP/GameUserSettings.ini"
-            (perl -pi -e 's/\r$//' "$LIVE_TMP/GameUserSettings.ini" 2>/dev/null || sed -i 's/\r$//' "$LIVE_TMP/GameUserSettings.ini" || true)
           fi
+          # also normalize the repo copy before diff
           if [ -f "$REPO_INI_DIR/GameUserSettings.ini" ]; then
-            (perl -pi -e 's/\r$//' "$REPO_INI_DIR/GameUserSettings.ini" 2>/dev/null || sed -i 's/\r$//' "$REPO_INI_DIR/GameUserSettings.ini" || true)
+            sed -i 's/\r$//' "$REPO_INI_DIR/GameUserSettings.ini"
           fi
 
       - name: Diff & stage GameUserSettings.ini
         id: stage
         run: |
           set -euo pipefail
-          mkdir -p "$REPO_INI_DIR"
           changed=0
           if [ -s "$LIVE_TMP/GameUserSettings.ini" ]; then
             if ! diff -q "$REPO_INI_DIR/GameUserSettings.ini" "$LIVE_TMP/GameUserSettings.ini" >/dev/null 2>&1; then
@@ -252,8 +252,8 @@ jobs:
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Create PR with updated GameUserSettings.ini
-        if: steps.stage.outputs.changed == '1'
         id: cpr
+        if: steps.stage.outputs.changed == '1'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ steps.app.outputs.token }}
@@ -261,12 +261,14 @@ jobs:
           title: "Sync GameUserSettings.ini from live: ${{ matrix.id }}"
           body: |
             Syncing `GameUserSettings.ini` from the live server after restart.
+
             - Target: **${{ matrix.id }}**
+            - Path: **${{ matrix.work_subdir }}/GameUserSettings.ini**
           branch: chore/sync-gus/${{ matrix.id }}-${{ github.run_id }}
           delete-branch: true
           add-paths: |
             ${{ matrix.work_subdir }}/GameUserSettings.ini
-          
+
       - name: Summarize result
         if: always()
         run: |
@@ -284,3 +286,8 @@ jobs:
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             echo "### $msg" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Stop ssh-agent
+        if: always()
+        run: |
+          if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k || true; fi
