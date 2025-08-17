@@ -17,9 +17,9 @@ permissions:
 
 env:
   # PRODUCTION waits (seconds)
-  WAIT_30M: "1800"
-  WAIT_15M: "900"
-  WAIT_3M:  "180"
+  WAIT_30M: "30" # prod-time: 1800
+  WAIT_15M: "30" # prod-time: 900
+  WAIT_3M:  "30" # prod-time: 180
 
   LOG_READY_TIMEOUT:  "600"    # 10m
   RCON_READY_TIMEOUT: "1200"   # 20m
