@@ -1,4 +1,4 @@
-name: ASA Cluster Compose Deploy
+name: ASA Cluster Compose Deploy (compose-only, PR live GUS changes)
 
 on:
   push:
@@ -7,17 +7,17 @@ on:
       - 'ASA/**/docker-compose.yaml'
   workflow_dispatch:
 
-concurrency:
-  # Allow overlaps across hosts, but isolate per-run so jobs aren't coalesced.
-  group: asa-cluster-deploy-${{ github.run_id }}
-  cancel-in-progress: false
-
 permissions:
   contents: write
   pull-requests: write
 
+# Allow multiple deploy jobs in parallel, but don't coalesce separate runs
+concurrency:
+  group: asa-cluster-deploy-${{ github.run_id }}
+  cancel-in-progress: false
+
 env:
-  # Short waits for testing; bump for prod if desired
+  # Short waits for testing; bump for prod when ready
   WAIT_30M: "30"      # prod: 900
   WAIT_15M: "30"      # prod: 720
   WAIT_3M:  "30"      # prod: 180
@@ -37,31 +37,51 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Changed files (compose only, JSON)
-        id: changed
-        uses: tj-actions/changed-files@v45
-        with:
-          files: |
-            ASA/**/docker-compose.yaml
-          json: true
+      # Build the list of changed compose files across the WHOLE push range
+      - name: Compute changed compose files (range-aware)
+        id: changed_range
+        shell: bash
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+
+          # Fallback if BEFORE is missing (e.g., workflow_dispatch)
+          if [ -z "${BEFORE}" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            BEFORE="$(git rev-parse HEAD~1)"
+          fi
+
+          git --no-pager diff --name-only "${BEFORE}" "${AFTER}" -- 'ASA/**/docker-compose.yaml' > changed.txt || true
+          echo "Changed compose files:"
+          cat changed.txt || true
+
+          # Proper multiline output
+          {
+            echo "list<<EOF"
+            cat changed.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build matrix from deploy/targets.json
         id: mk-matrix
         uses: actions/github-script@v7
         env:
-          CHANGED_JSON: ${{ steps.changed.outputs.all_changed_files_json }}
+          CHANGED_LIST: ${{ steps.changed_range.outputs.list }}
         with:
           script: |
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
-            const changed = JSON.parse(process.env.CHANGED_JSON || '[]'); // array of exact paths
+            const changed = (process.env.CHANGED_LIST || '')
+              .split('\n').map(s => s.trim()).filter(Boolean);
+
             const picks = [];
             for (const t of manifest.targets) {
               const composePath = `${t.work_subdir.replace(/\/+$/,'')}/docker-compose.yaml`;
               if (changed.includes(composePath)) picks.push(t);
             }
-            // de-dupe by id (paranoia)
+            // de-dupe by id
             const uniq = Object.values(Object.fromEntries(picks.map(t => [t.id, t])));
+
             core.info(`Changed compose files: ${changed.join(', ') || '(none)'}`);
             core.info(`Selected maps: ${uniq.map(t => t.id).join(', ') || '(none)'}`);
             core.setOutput('matrix', JSON.stringify(uniq));
@@ -76,7 +96,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
 
-    # prevent two maps on the same physical host from colliding, but unique per run
+    # serialize per physical host but unique per run to avoid coalescing
     concurrency:
       group: asa-deploy-${{ matrix.ssh_host_secret }}-${{ github.run_id }}
       cancel-in-progress: false
@@ -217,12 +237,8 @@ jobs:
       - name: Normalize line endings (LF) & strip BOM
         run: |
           norm() {
-            f="$1"
-            [ -f "$f" ] || return 0
-            # strip CR, then strip UTF-8 BOM if present
+            f="$1"; [ -f "$f" ] || return 0
             sed -i 's/\r$//' "$f" || true
-            printf '%s' "$(tail -c +1 "$f")" > "$f" 2>/dev/null || true
-            # explicit BOM strip (portable)
             perl -i -pe 's/^\x{FEFF}// if $.==1' "$f" 2>/dev/null || true
           }
           norm "$LIVE_TMP/GameUserSettings.ini"
