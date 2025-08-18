@@ -269,7 +269,8 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
           commit-message: "chore(${{ matrix.id }}): sync live GameUserSettings.ini -> repo"
-          title: "Sync GameUserSettings.ini from live: ${{ matrix.id }}"
+          # 👇 marker lives in the PR title so a squash merge carries it into the merge commit
+          title: "[auto-gus-sync] Sync GameUserSettings.ini from live: ${{ matrix.id }}"
           body: |
             Syncing `GameUserSettings.ini` from the live server after restart.
             - Target: **${{ matrix.id }}**
@@ -277,6 +278,18 @@ jobs:
           delete-branch: true
           add-paths: |
             ${{ matrix.work_subdir }}/GameUserSettings.ini
+          labels: |
+            auto-merge
+            gus-sync
+
+      - name: Enable auto-merge (squash) for that PR
+        if: steps.cpr.outputs.pull-request-number
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ steps.app.outputs.token }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
+
 
       - name: Summarize result
         env:
@@ -285,13 +298,13 @@ jobs:
           set -euo pipefail
           if [ "${{ steps.stage.outputs.changed }}" = "1" ]; then
             if [ -n "${PRNUM:-}" ]; then
-              echo "### GameUserSettings.ini changed → PR opened (#${PRNUM})" >> "$GITHUB_STEP_SUMMARY"
-              echo "GameUserSettings.ini changed → PR opened (#${PRNUM})"
+              echo "### GameUserSettings.ini changed → ✅ PR opened (#${PRNUM})" >> "$GITHUB_STEP_SUMMARY"
+              echo "GameUserSettings.ini changed → ✅ PR opened (#${PRNUM})"
             else
-              echo "### GameUserSettings.ini changed → PR opened" >> "$GITHUB_STEP_SUMMARY"
-              echo "GameUserSettings.ini changed → PR opened"
+              echo "### GameUserSettings.ini changed → ✅ PR opened" >> "$GITHUB_STEP_SUMMARY"
+              echo "GameUserSettings.ini changed → ✅ PR opened"
             fi
           else
-            echo "### No GameUserSettings.ini changes detected → no PR" >> "$GITHUB_STEP_SUMMARY"
-            echo "No GameUserSettings.ini changes detected → no PR"
+            echo "### No GameUserSettings.ini changes detected → ❌ no PR" >> "$GITHUB_STEP_SUMMARY"
+            echo "No GameUserSettings.ini changes detected → ❌ no PR"
           fi
