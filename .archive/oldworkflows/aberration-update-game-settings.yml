@@ -1,0 +1,101 @@
+# name: ASA Svartalfheim GameUserSettings Update Workflow
+
+# on:
+#   push:
+#     paths:
+#       - 'ASA/asa-server-3/aberration/GameUserSettings.ini'
+#       - 'ASA/asa-server-3/aberration/Game.ini'
+#     branches:
+#       - 'main'
+
+# concurrency:
+#   group: asa-server-3-updates
+#   cancel-in-progress: false
+
+# jobs:
+#   update-settings:
+#     runs-on: self-hosted
+#     timeout-minutes: 60
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v5
+
+#       - name: Setup SSH key
+#         uses: webfactory/ssh-agent@v0.9.1
+#         with:
+#           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+
+#       - name: Send Restart Notification (30 min warning)
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-aberration asa-ctrl rcon --exec "serverchat Server updating settings in 30 minutes"'
+
+#       - name: Wait 15 minutes
+#         run: sleep 30 # testing
+
+#       - name: Send Restart Notification (15 min warning)
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-aberration asa-ctrl rcon --exec "serverchat Server updating settings in 15 minutes"'
+
+#       - name: Wait 12 minutes
+#         run: sleep 30 # testing
+
+#       - name: Send Restart Notification (3 min warning)
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-aberration asa-ctrl rcon --exec "serverchat Server updating settings in 3 minutes. Final warning!"'
+
+#       - name: Wait 3 minutes
+#         run: sleep 30 # teting
+
+#       - name: Send Save World & Shutdown Notification
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'sudo docker exec asa-server-aberration asa-ctrl rcon --exec "serverchat Saving world and shutting down for updates." && \
+#              sudo docker exec asa-server-aberration asa-ctrl rcon --exec "saveworld"'
+
+#       - name: Stop ASA Aberration Container
+#         run: |
+#           set -x
+#           ssh -vvv -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/aberration && sudo docker compose down'
+
+#       - name: Pull repo changes (force reset)
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} << 'EOF'
+#           set -e
+#           cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/aberration
+#           git fetch origin main
+#           git reset --hard origin/main
+#           EOF
+
+#       - name: Inject admin password and replace GameUserSettings.ini
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} << 'EOF'
+#           set -e
+#           cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/aberration
+#           # inject only the admin password
+#           sed -i "s/\${SERVER_PASSWORD}/${{ secrets.ASA_ADMIN_SECRET }}/g" GameUserSettings.ini
+#           # replace the live settings file using sudo
+#           sudo rm /var/lib/docker/volumes/aberration_server-files-3/_data/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini
+#           sudo rm /var/lib/docker/volumes/aberration_server-files-3/_data/ShooterGame/Saved/Config/WindowsServer/Game.ini
+#           sudo cp GameUserSettings.ini \
+#              /var/lib/docker/volumes/aberration_server-files-3/_data/ShooterGame/Saved/Config/WindowsServer/
+#           sudo cp Game.ini \
+#             /var/lib/docker/volumes/aberration_server-files-3/_data/ShooterGame/Saved/Config/WindowsServer/
+#           EOF
+
+#       - name: Restart container
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_3_SSH_HOST }} \
+#             'cd ${{ secrets.WORK_DIR }}/ASA/asa-server-3/aberration && sudo docker compose up -d'

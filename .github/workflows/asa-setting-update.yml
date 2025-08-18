@@ -1,32 +1,35 @@
-name: ASA Cluster Compose Deploy (compose-only, PR live GUS changes)
+name: ASA Settings Apply (manual config changes)
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'ASA/**/docker-compose.yaml'
+      - 'ASA/**/GameUserSettings.ini'
+      - 'ASA/**/Game.ini'
   workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
-# Allow multiple deploy jobs in parallel, but don't coalesce separate runs
+# Allow multiple runs in parallel; don’t coalesce runs
 concurrency:
-  group: asa-cluster-deploy-${{ github.run_id }}
+  group: asa-settings-apply-${{ github.run_id }}
   cancel-in-progress: false
 
 env:
-  # Short waits for testing; bump for prod when ready
+  # waits (set to 30s for testing; bump for prod)
   WAIT_30M: "30"      # prod: 900
   WAIT_15M: "30"      # prod: 720
   WAIT_3M:  "30"      # prod: 180
 
-  LOG_READY_TIMEOUT:  "600"    # 10m
-  RCON_READY_TIMEOUT: "1200"   # 20m
+  LOG_READY_TIMEOUT:  "600"   # 10m
+  RCON_READY_TIMEOUT: "1200"  # 20m
 
 jobs:
   build-matrix:
+    # If the merge commit title contains our bot marker, skip the whole workflow.
+    if: ${{ !contains(github.event.head_commit.message, '[auto-gus-sync]') }}
     runs-on: self-hosted
     outputs:
       matrix: ${{ steps.mk-matrix.outputs.matrix }}
@@ -37,8 +40,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Build the list of changed compose files across the WHOLE push range
-      - name: Compute changed compose files (range-aware)
+      # Compute changed *.ini files across the whole push range
+      - name: Compute changed ini files (range-aware)
         id: changed_range
         shell: bash
         run: |
@@ -46,22 +49,22 @@ jobs:
           BEFORE="${{ github.event.before }}"
           AFTER="${{ github.sha }}"
 
-          # Fallback if BEFORE is missing (e.g., workflow_dispatch)
           if [ -z "${BEFORE}" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
             BEFORE="$(git rev-parse HEAD~1)"
           fi
 
-          git --no-pager diff --name-only "${BEFORE}" "${AFTER}" -- 'ASA/**/docker-compose.yaml' > changed.txt || true
-          echo "Changed compose files:"
+          git --no-pager diff --name-only "${BEFORE}" "${AFTER}" \
+            -- 'ASA/**/GameUserSettings.ini' 'ASA/**/Game.ini' > changed.txt || true
+          echo "Changed INI files:"
           cat changed.txt || true
 
-          # Proper multiline output
           {
             echo "list<<EOF"
             cat changed.txt
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # Map changed files -> targets (from deploy/targets.json)
       - name: Build matrix from deploy/targets.json
         id: mk-matrix
         uses: actions/github-script@v7
@@ -74,22 +77,35 @@ jobs:
             const changed = (process.env.CHANGED_LIST || '')
               .split('\n').map(s => s.trim()).filter(Boolean);
 
+            // For each target, detect which of its two ini files changed.
             const picks = [];
             for (const t of manifest.targets) {
-              const composePath = `${t.work_subdir.replace(/\/+$/,'')}/docker-compose.yaml`;
-              if (changed.includes(composePath)) picks.push(t);
+              const base = t.work_subdir.replace(/\/+$/,'');
+              const gusPath  = `${base}/GameUserSettings.ini`;
+              const gamePath = `${base}/Game.ini`;
+              const apply_gus  = changed.includes(gusPath);
+              const apply_game = changed.includes(gamePath);
+              if (apply_gus || apply_game) {
+                picks.push({
+                  ...t,
+                  apply_gus,
+                  apply_game
+                });
+              }
             }
-            // de-dupe by id
-            const uniq = Object.values(Object.fromEntries(picks.map(t => [t.id, t])));
 
-            core.info(`Changed compose files: ${changed.join(', ') || '(none)'}`);
-            core.info(`Selected maps: ${uniq.map(t => t.id).join(', ') || '(none)'}`);
+            // de-dupe by id just to be safe
+            const uniq = Object.values(Object.fromEntries(picks.map(t => [t.id, t])));
+            core.info(`Changed files: ${changed.join(', ') || '(none)'}`);
+            core.info(`Selected targets: ${uniq.map(t => `${t.id}[gus:${t.apply_gus}/game:${t.apply_game}]`).join(', ') || '(none)'}`);
             core.setOutput('matrix', JSON.stringify(uniq));
 
-  deploy:
+  apply:
     needs: build-matrix
     if: ${{ needs.build-matrix.outputs.matrix != '[]' }}
     runs-on: self-hosted
+
+    # Queue per physical host (no cancellations); different hosts still run in parallel
     environment:
       name: host-${{ matrix.ssh_host_secret }}
 
@@ -107,8 +123,8 @@ jobs:
       REPO_SUBDIR: ${{ matrix.work_subdir }}
       CNAME: ${{ matrix.container }}
       LIVE_WIN_DIR: /var/lib/docker/volumes/${{ matrix.volume }}/_data/ShooterGame/Saved/Config/WindowsServer
-      REPO_INI_DIR: ${{ github.workspace }}/${{ matrix.work_subdir }}
-      LIVE_TMP: live-${{ matrix.id }}
+      APPLY_GUS: ${{ matrix.apply_gus }}
+      APPLY_GAME: ${{ matrix.apply_game }}
 
     steps:
       - name: Mint GitHub App token
@@ -118,7 +134,7 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Checkout (for PR diffs)
+      - name: Checkout (for host update)
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -129,11 +145,11 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
-      # --- Drain & stop ---
+      # --- Drain & stop (same cadence as compose deploy) ---
       - name: RCON 30m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 30 minutes for updates. Get somewhere safe.\""
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server updating settings in 30 minutes\""
 
       - name: Wait 15m
         run: sleep ${{ env.WAIT_30M }}
@@ -141,7 +157,7 @@ jobs:
       - name: RCON 15m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 15 minutes for updates. Get somewhere safe.\""
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server updating settings in 15 minutes\""
 
       - name: Wait 12m
         run: sleep ${{ env.WAIT_15M }}
@@ -149,7 +165,7 @@ jobs:
       - name: RCON 3m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server restarting in 3 minutes for updates. Final Warning get somewhere safe.\""
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Server updating settings in 3 minutes. Final warning!\""
 
       - name: Wait 3m
         run: sleep ${{ env.WAIT_3M }}
@@ -157,7 +173,7 @@ jobs:
       - name: Saveworld & shutdown announce
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Saving world and shutting down for updates.\" && \
+            "sudo docker exec '$CNAME' asa-ctrl rcon --exec \"serverchat Saving world and shutting down for settings update.\" && \
              sudo docker exec '$CNAME' asa-ctrl rcon --exec \"saveworld\""
 
       - name: Stop container
@@ -165,8 +181,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose down"
 
-      # --- Update on-host checkout (compose only) ---
-      - name: Update host checkout to origin/main (compose changes)
+      # --- Update host checkout (to main) ---
+      - name: Update host checkout to origin/main
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
           set -euo pipefail
@@ -178,12 +194,33 @@ jobs:
           git reset --hard FETCH_HEAD
           EOF
 
+      # --- Apply changed files only ---
+      - name: Apply GameUserSettings.ini / Game.ini to live (only if changed)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
+          set -euo pipefail
+          cd "${{ env.WORK_DIR }}/${{ env.REPO_SUBDIR }}"
+
+          LIVE="${{ env.LIVE_WIN_DIR }}"
+
+          # Only touch the files that actually changed in the PR/merge
+          if [ "${{ env.APPLY_GUS }}" = "true" ]; then
+            # Inject admin password placeholder with secret, then copy
+            sed -i "s/\${SERVER_PASSWORD}/${{ secrets.ASA_ADMIN_SECRET }}/g" GameUserSettings.ini
+            sudo install -m 0644 -o root -g root GameUserSettings.ini "${LIVE}/GameUserSettings.ini"
+          fi
+
+          if [ "${{ env.APPLY_GAME }}" = "true" ]; then
+            sudo install -m 0644 -o root -g root Game.ini "${LIVE}/Game.ini"
+          fi
+          EOF
+
       - name: Start container
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose up -d"
 
-      # --- Readiness gates ---
+      # --- Readiness gates (same as compose deploy) ---
       - name: Wait for startup log ("Starting the ARK...")
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
@@ -221,77 +258,3 @@ jobs:
             sleep 5
           done
           EOF
-
-      # --- Live -> repo PR (ONLY GameUserSettings.ini) ---
-      - name: Fetch live GameUserSettings.ini (read-only mount)
-        run: |
-          mkdir -p "$LIVE_TMP"
-          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
-            "sudo docker run --rm -v '${{ matrix.volume }}:/v:ro' alpine:3.19 \
-             sh -c 'cat /v/ShooterGame/Saved/Config/WindowsServer/GameUserSettings.ini 2>/dev/null || true'" \
-            > "$LIVE_TMP/GameUserSettings.ini" || true
-
-      - name: Normalize line endings (LF) & strip BOM
-        run: |
-          norm() {
-            f="$1"; [ -f "$f" ] || return 0
-            sed -i 's/\r$//' "$f" || true
-            perl -i -pe 's/^\x{FEFF}// if $.==1' "$f" 2>/dev/null || true
-          }
-          norm "$LIVE_TMP/GameUserSettings.ini"
-          norm "$REPO_INI_DIR/GameUserSettings.ini"
-
-      - name: Scrub admin password placeholder (do not commit secrets)
-        run: |
-          if [ -s "$LIVE_TMP/GameUserSettings.ini" ]; then
-            sed -i 's|^ServerAdminPassword=.*$|ServerAdminPassword=\${SERVER_PASSWORD}|' "$LIVE_TMP/GameUserSettings.ini"
-          fi
-
-      - name: Diff & stage GameUserSettings.ini
-        id: stage
-        run: |
-          set -euo pipefail
-          mkdir -p "$REPO_INI_DIR"
-          changed=0
-          if [ -s "$LIVE_TMP/GameUserSettings.ini" ]; then
-            if ! diff -q "$REPO_INI_DIR/GameUserSettings.ini" "$LIVE_TMP/GameUserSettings.ini" >/dev/null 2>&1; then
-              cp "$LIVE_TMP/GameUserSettings.ini" "$REPO_INI_DIR/GameUserSettings.ini"
-              echo "updated GameUserSettings.ini"
-              changed=1
-            fi
-          fi
-          echo "changed=$changed" >> "$GITHUB_OUTPUT"
-
-      - name: Create PR with updated GameUserSettings.ini
-        if: steps.stage.outputs.changed == '1'
-        id: cpr
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ steps.app.outputs.token }}
-          commit-message: "chore(${{ matrix.id }}): sync live GameUserSettings.ini -> repo"
-          title: "Sync GameUserSettings.ini from live: ${{ matrix.id }}"
-          body: |
-            Syncing `GameUserSettings.ini` from the live server after restart.
-            - Target: **${{ matrix.id }}**
-          branch: chore/sync-gus/${{ matrix.id }}-${{ github.run_id }}
-          delete-branch: true
-          add-paths: |
-            ${{ matrix.work_subdir }}/GameUserSettings.ini
-
-      - name: Summarize result
-        env:
-          PRNUM: ${{ steps.cpr.outputs.pull-request-number }}
-        run: |
-          set -euo pipefail
-          if [ "${{ steps.stage.outputs.changed }}" = "1" ]; then
-            if [ -n "${PRNUM:-}" ]; then
-              echo "### GameUserSettings.ini changed → PR opened (#${PRNUM})" >> "$GITHUB_STEP_SUMMARY"
-              echo "GameUserSettings.ini changed → PR opened (#${PRNUM})"
-            else
-              echo "### GameUserSettings.ini changed → PR opened" >> "$GITHUB_STEP_SUMMARY"
-              echo "GameUserSettings.ini changed → PR opened"
-            fi
-          else
-            echo "### No GameUserSettings.ini changes detected → no PR" >> "$GITHUB_STEP_SUMMARY"
-            echo "No GameUserSettings.ini changes detected → no PR"
-          fi
