@@ -11,27 +11,18 @@ permissions:
   contents: write
   pull-requests: write
 
-# ⚠️ Quick workaround: make the group unique per run so GH doesn't
-# coalesce/cancel parallel matrix jobs that share a host.
-concurrency:
-  group: asa-deploy-${{ matrix.ssh_host_secret }}-${{ github.run_id }}
-  cancel-in-progress: false
-
 env:
-  # Prod waits
-  WAIT_30M: "1800"
-  WAIT_15M: "900"
-  WAIT_3M:  "180"
-
-  LOG_READY_TIMEOUT:  "600"    # 10m
-  RCON_READY_TIMEOUT: "1200"   # 20m
+  WAIT_30M: "30" # Prod Times: 1800
+  WAIT_15M: "30" # Prod Times: 900
+  WAIT_3M:  "30" # Prod Times: 180
+  LOG_READY_TIMEOUT:  "600"
+  RCON_READY_TIMEOUT: "1200"
 
 jobs:
   build-matrix:
     runs-on: self-hosted
     outputs:
       matrix: ${{ steps.mk-matrix.outputs.matrix }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -57,7 +48,6 @@ jobs:
             const changed = (process.env.CHANGED || '')
               .split('\n').map(s => s.trim()).filter(Boolean);
             const manifest = JSON.parse(fs.readFileSync('deploy/targets.json','utf8'));
-
             const picks = [];
             for (const t of manifest.targets) {
               const composePath = `${t.work_subdir.replace(/\/+$/,'')}/docker-compose.yaml`;
@@ -77,6 +67,11 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
+
+    # <-- move concurrency here so matrix.* is in scope
+    concurrency:
+      group: asa-deploy-${{ matrix.ssh_host_secret }}-${{ github.run_id }}
+      cancel-in-progress: false
 
     env:
       SSH_USER: ${{ secrets.ASA_SERVER_SSH_USER }}
@@ -110,7 +105,6 @@ jobs:
           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
 
       # --- Drain & stop ---
-
       - name: RCON 30m warning
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
@@ -146,17 +140,15 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" \
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose down"
 
-      # --- Update the *on-host* checkout for that map (compose only) ---
+      # --- Update on-host checkout (compose only) ---
       - name: Update host checkout to origin/main (compose changes)
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
           set -euo pipefail
           cd "${{ env.WORK_DIR }}/${{ env.REPO_SUBDIR }}"
-
           TOKEN='${{ steps.app.outputs.token }}'
           REPO_SLUG='${{ github.repository }}'
           REPO_URL="https://x-access-token:${TOKEN}@github.com/${REPO_SLUG}.git"
-
           GIT_TERMINAL_PROMPT=0 git fetch --no-tags --prune "$REPO_URL" main
           git reset --hard FETCH_HEAD
           EOF
@@ -167,7 +159,6 @@ jobs:
             "cd '$WORK_DIR/$REPO_SUBDIR' && sudo docker compose up -d"
 
       # --- Readiness gates ---
-
       - name: Wait for startup log ("Starting the ARK...")
         run: |
           ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
@@ -207,7 +198,6 @@ jobs:
           EOF
 
       # --- Live -> repo PR (ONLY GameUserSettings.ini) ---
-
       - name: Fetch live GameUserSettings.ini (read-only mount)
         run: |
           mkdir -p "$LIVE_TMP"
