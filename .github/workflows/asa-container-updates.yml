@@ -90,16 +90,13 @@ jobs:
     needs: build-matrix
     if: ${{ needs.build-matrix.outputs.matrix != '[]' }}
     runs-on: self-hosted
+    environment:
+      name: host-${{ matrix.ssh_host_secret }}
 
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
-
-    # serialize per physical host but unique per run to avoid coalescing
-    concurrency:
-      group: asa-deploy-${{ matrix.ssh_host_secret }}-${{ github.run_id }}
-      cancel-in-progress: false
 
     env:
       SSH_USER: ${{ secrets.ASA_SERVER_SSH_USER }}
