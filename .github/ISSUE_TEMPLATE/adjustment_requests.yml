@@ -1,0 +1,141 @@
+name: "⚙️ Game Settings / Balance Change Request"
+description: Request a change to server/game settings (rates, balance, QoL, mod configs). Not for 🐛 bugs or admin help.
+title: "⚙️ Settings Change: <short summary>"
+labels: ["settings-request", "needs-discussion"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📢 Read First
+        Use this form to request **configuration changes** (e.g., rates, balance, QoL, mod settings).
+        - ❌ Not for **bugs** → use the **🐛 Bug Report** form.
+        - ❌ Not for **admin help** (lost items/dinos, trading disputes, etc.) → use the **🆘 Player Help** form.
+        - ✅ You **do not** need to attach INI files or test locally—clear rationale is most important.
+        - 🔒 **Never post secrets** (admin passwords, PINs, IPs). If a secret is relevant, write “admin-only”.
+
+  - type: checkboxes
+    id: acks
+    attributes:
+      label: ✅ Acknowledgements
+      options:
+        - label: This is **not** a 🐛 bug report and **not** an admin-help request.
+          required: true
+        - label: I understand the team may discuss, trial, or decline changes for cluster health.
+          required: true
+
+  - type: dropdown
+    id: map
+    attributes:
+      label: 🗺️ Map / Server
+      options:
+        - The Island - PVP
+        - Scorched Earth - PVE
+        - Extinction - PVE
+        - Astraeos - PVE
+        - Ragnarok - PVE
+        - The Center - PVE
+        - Aberration - PVE
+        - Necrotic Dominion - PVE
+        - Svartalfheim - PVE
+        - Eden - PVE
+        - Nyrandil - PVE
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: 🎛️ Change category
+      options:
+        - Rates (XP / Taming / Harvest / Breeding)
+        - QoL / UI
+        - Engrams / Leveling
+        - Creature Spawns / Balance
+        - Structures / Building Rules
+        - Loot / Drops
+        - Mod configuration
+        - PvP windows / Rules
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: request_summary
+    attributes:
+      label: 📝 What would you like changed?
+      placeholder: "Describe the exact change you want (plain language is fine)."
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: 💡 Why should this change be made?
+      description: Explain the goal (fairness, balance, new player experience, QoL, performance, etc.).
+      placeholder: "Provide the reasoning and expected benefits."
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 📊 Potential impact / trade-offs
+      description: Consider PvE/PvP effects, economy/progression, performance, grief potential, event/boss interactions, etc.
+      placeholder: "List likely upsides/downsides so reviewers can evaluate risk."
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggested_values
+    attributes:
+      label: 🔢 Suggested values (optional)
+      description: If you know the settings, list them (no need to be exact). Code fences helpful but optional.
+      placeholder: |
+        Example:
+        ```
+        [ServerSettings]
+        XPMultiplier=2.0
+        TamingSpeedMultiplier=3.0
+        HarvestAmountMultiplier=2.5
+        ```
+      render: bash
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 🔗 Optional references / examples
+      description: Beacon links/exports, screenshots, videos, or other servers’ settings you liked.
+      placeholder: "Paste links or brief notes. Attach images if helpful."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: ⏱️ Priority (requester’s view)
+      options:
+        - Nice to have
+        - Important
+        - Urgent (time-sensitive event)
+      description: This helps triage—final priority is set by admins.
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: 🧑‍🤝‍🧑 In-game or Discord name (optional)
+      placeholder: "e.g., PlayerName#1234"
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 🗒️ Anything else?
+      placeholder: "Additional context or constraints."
+    validations:
+      required: false

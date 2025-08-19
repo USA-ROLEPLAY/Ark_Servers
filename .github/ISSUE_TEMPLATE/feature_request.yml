@@ -1,0 +1,203 @@
+name: "✨ Feature Request (Mods / Plugins)"
+description: Suggest a new mod or plugin for the ASA servers. Not for 🐛 bugs or 🆘 admin help.
+title: "✨ Feature: <short summary>"
+labels: ["feature-request", "mods", "needs-discussion"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📢 Read First
+        Use this form to request **mods** or **plugins** to be added to the servers.
+        - ❌ Not for **bugs** → use the **🐛 Bug Report** form.
+        - ❌ Not for **admin help** (lost items/dinos, tickets, trades) → use the **🆘 Player Help** form.
+        - ✅ Provide links, IDs, and a clear rationale so we can evaluate impact, stability, and balance.
+        - 🔒 **Never post secrets** (passwords, tokens, IPs). If a secret is relevant, write “admin-only”.
+
+  - type: checkboxes
+    id: acks
+    attributes:
+      label: ✅ Acknowledgements
+      options:
+        - label: This is **not** a 🐛 bug report and **not** an admin-help request.
+          required: true
+        - label: I understand additions may be discussed, trialed, or declined for cluster stability/performance.
+          required: true
+        - label: I confirm I have reviewed recent announcements/changelogs to avoid duplicates.
+          required: true
+
+  - type: dropdown
+    id: mod_type
+    attributes:
+      label: 🧩 Type of request
+      options:
+        - Mod
+        - Plugin
+        - Both (mod + plugin)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: map_targets
+    attributes:
+      label: 🗺️ Target servers (select all that apply)
+      multiple: true
+      options:
+        - Cluster-wide (all servers)
+        - The Island - PVP
+        - Scorched Earth - PVE
+        - Extinction - PVE
+        - Astraeos - PVE
+        - Ragnarok - PVE
+        - The Center - PVE
+        - Aberration - PVE
+        - Necrotic Dominion - PVE
+        - Svartalfheim - PVE
+        - Eden - PVE
+        - Nyrandil - PVE
+    validations:
+      required: true
+
+  - type: input
+    id: curseforge_links
+    attributes:
+      label: 🔗 CurseForge project page(s)
+      description: Provide the **CurseForge** link(s) for the mod(s) or plugin(s). Separate multiple links with spaces or commas.
+      placeholder: "e.g., https://www.curseforge.com/ark-survival-ascended/mods/<mod-slug>"
+    validations:
+      required: true
+
+  - type: input
+    id: curseforge_ids
+    attributes:
+      label: 🆔 CurseForge Project ID(s) (optional)
+      description: Numeric **Project ID(s)** from CurseForge (if you know them). Comma or space separated.
+      placeholder: "e.g., 123456, 987654"
+    validations:
+      required: false
+
+  - type: input
+    id: curseforge_file_ids
+    attributes:
+      label: 📦 CurseForge File ID(s) (optional)
+      description: Specific **File ID(s)** to request a particular release/version. Comma or space separated.
+      placeholder: "e.g., 4578123, 4579001"
+    validations:
+      required: false
+
+  - type: input
+    id: source_repo
+    attributes:
+      label: 🗃️ Source / Repo (plugins or open-source mods)
+      placeholder: "e.g., https://github.com/author/project"
+    validations:
+      required: false
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 📝 What does this add?
+      placeholder: "Describe the feature(s), gameplay impact, and why it’s valuable for our cluster."
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: 💡 Why should we add it?
+      description: Explain benefits (QoL, balance, community demand, endgame variety, accessibility, performance, etc.).
+      placeholder: "Make the case for inclusion."
+    validations:
+      required: true
+
+  - type: textarea
+    id: config_notes
+    attributes:
+      label: ⚙️ Suggested configuration (optional)
+      description: Any recommended settings, INI snippets, load order, or plugin config. Code fences helpful but optional.
+      placeholder: |
+        Example:
+        ```
+        [MyModSettings]
+        EnableFeatureX=true
+        DifficultyScale=1.2
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 🧷 Dependencies & load order
+      description: List required mods/plugins and preferred load order. Include incompatibilities if known. Use CurseForge slugs/IDs if possible.
+      placeholder: "e.g., Requires Mod A before Mod B. Conflicts with Plugin C."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: risk_flags
+    attributes:
+      label: 🚩 Risk flags
+      options:
+        - label: Known to be heavy on performance (CPU/RAM/network).
+        - label: Frequent updates / breaking changes reported.
+        - label: Alters PvP balance or player progression significantly.
+        - label: Alters boss progression or world spawns significantly.
+        - label: Potential external service dependency (e.g., auth/API).
+    validations:
+      required: false
+
+  - type: textarea
+    id: performance
+    attributes:
+      label: 📊 Performance / stability notes (if known)
+      placeholder: "Tickrate impact, memory usage, server load, any known issues from docs/other servers."
+    validations:
+      required: false
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: 🧪 Evidence / references (optional)
+      description: Links to docs, videos, other servers using it, or your own observations.
+      placeholder: "Add anything that can speed up evaluation."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: rollout
+    attributes:
+      label: 🚀 Rollout preference
+      options:
+        - Trial on a single PVE server first
+        - Trial on a single PVP server first
+        - Trial on low-pop hours
+        - Cluster-wide immediately
+        - No preference
+    validations:
+      required: false
+
+  - type: textarea
+    id: rollback
+    attributes:
+      label: 🔄 Rollback plan / concerns
+      description: What should we watch for? If the mod/plugin misbehaves, how should we revert safely?
+      placeholder: "e.g., remove after event; migrate structures; warn about lost items."
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: 🧑‍🤝‍🧑 In-game or Discord name (optional)
+      placeholder: "e.g., PlayerName#1234"
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 🗒️ Anything else?
+      placeholder: "Additional context, alternatives considered, or special considerations."
+    validations:
+      required: false
