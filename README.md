@@ -76,7 +76,7 @@ Issues related to ban appeals opened in this repository will automatically be cl
 
 ## 💬 Feedback and Discussions
 
-If you have any feedback, please create use our [Discussions](https://github.com/USA-ROLEPLAY/Ark_Servers/discussions] page.
+If you have any feedback, please create use our [Discussions](https://github.com/USA-ROLEPLAY/Ark_Servers/discussions) page.
 This is a great place to share your thoughts with the community and be informed of any updates or changes outside of our [Discord](https://discord.gg/YURaDVRdet].
 
 ---
