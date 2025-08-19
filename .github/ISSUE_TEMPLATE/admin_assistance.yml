@@ -1,5 +1,5 @@
 name: "🆘 Player Help Request (Admin Assistance)"
-description: Ask admins for help with non-bug gameplay situations (unstuck, tribe ownership, trading disputes, rule enforcement, etc.). For game bugs, use the 🐞 Bug Report form instead.
+description: Ask admins for help with non-bug gameplay situations (unstuck, tribe ownership, trading disputes, rule enforcement, etc.). For game bugs, use the 🐛 Bug Report form instead.
 labels: ["player-help", "needs-triage"]
 body:
   - type: markdown
