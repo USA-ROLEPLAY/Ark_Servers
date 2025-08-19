@@ -1,0 +1,181 @@
+name: "🐛 Game-Breaking Bug Report (ASA Servers)"
+description: Report a game-breaking or major gameplay bug on our ASA servers. For general questions, use Discussions.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Read first
+
+        - 🔍 **Search before filing:** Check [open issues](https://github.com/USA-ROLEPLAY/Ark_Servers/issues) and [closed issues](https://github.com/USA-ROLEPLAY/Ark_Servers/issues?q=is%3Aissue+is%3Aclosed). If one matches, comment there instead of opening a new report.
+        - 🧪 **Be specific & reproducible:** Include *exact* steps, locations, and what you were doing when it happened.
+        - 🧭 **Privacy / safety:** Do **not** post secrets, admin passwords, server IPs, or sensitive base coordinates. If needed, say “coords available to staff privately.”
+        - 🖼️ **Evidence helps:** Attach screenshots or short clips whenever possible.
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: ✅ Acknowledgements
+      options:
+        - label: I searched existing issues and did not find a match.
+          required: true
+        - label: I can reproduce this or I’ve provided clear evidence (screens/video/logs).
+          required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🚨 Severity
+      description: Choose the highest impact that applies.
+      options:
+        - Game-breaking (server crash, character loss, dupes, cannot progress)
+        - Major (serious exploit, base/tribe loss risk, frequent disconnects)
+        - Minor (cosmetic, low impact, intermittent)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: map
+    attributes:
+      label: 🗺️ Map / Server
+      description: Where did this happen?
+      options:
+        - The Island - PVP
+        - Scorched Earth - PVE
+        - Extinction - PVE
+        - Astraeos - PVE
+        - Ragnarok - PVE
+        - The Center - PVE
+        - Aberration - PVE
+        - Necrotic Dominion - PVE
+        - Svartalfheim - PVE
+        - Eden - PVE
+        - Nyrandil - PVE
+    validations:
+      required: true
+
+  - type: input
+    id: when
+    attributes:
+      label: 🕒 Date & time of incident
+      description: Use UTC if possible (e.g., 2025-08-18 03:15 UTC).
+      placeholder: "YYYY-MM-DD HH:MM (UTC preferred)"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: 📍 Location (optional)
+      description: GPS coords, region, cave, base area, obelisk, etc. (Avoid posting sensitive coords publicly.)
+      placeholder: "Example: 42.0 / 58.3 (near Green Obelisk), Ice Cave entrance"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: activity
+    attributes:
+      label: 🎮 What were you doing?
+      description: Check all that apply, then describe below.
+      options:
+        - label: Building / Placing structures
+        - label: Taming
+        - label: Breeding / Imprinting
+        - label: Boss / Arena / Mission
+        - label: Caving / Artifact run
+        - label: Traveling / Transfer / Upload / Download
+        - label: Trading / PvP combat / Raiding
+        - label: Joining server / Loading in
+        - label: Other (I’ll describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro_steps
+    attributes:
+      label: 🔄 Steps to reproduce
+      description: List exact steps someone else can follow to trigger it again.
+      placeholder: |
+        1) …
+        2) …
+        3) …
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ Expected behavior
+      placeholder: "What you thought would happen…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ Actual behavior
+      placeholder: "What actually happened… include messages, crashes, disconnects, etc."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: 🔁 How often does it happen?
+      options:
+        - Every time
+        - Often ( >50% )
+        - Sometimes (10–50%)
+        - Rarely ( <10% )
+        - Happened once
+    validations:
+      required: true
+
+  - type: textarea
+    id: losses
+    attributes:
+      label: 🧾 Impact / losses (if any)
+      description: Dinos, structures, items, character data, tribelog entries, etc.
+      placeholder: "List what was lost or affected…"
+    validations:
+      required: false
+
+  - type: input
+    id: mods
+    attributes:
+      label: 🧩 Mods involved (if known)
+      placeholder: "e.g., Dino Depot, Paleo ARK, …"
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 📎 Screenshots / video / logs
+      description: Drag-and-drop images or paste links. Include relevant client crash text if available.
+      placeholder: "Attach files or paste links here…"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: quickchecks
+    attributes:
+      label: 🧰 Quick checks
+      options:
+        - label: Tried relogging or rejoining the server
+        - label: Tried after a fresh client restart
+        - label: Tried again later (not a transient outage)
+
+  - type: input
+    id: contact
+    attributes:
+      label: 💬 Optional contact (Discord)
+      placeholder: "yourname#1234 or @handle"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Our team will triage game-breaking issues as quickly as possible. 🙏

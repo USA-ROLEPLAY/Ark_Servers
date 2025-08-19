@@ -1,0 +1,180 @@
+name: "🆘 Player Help Request (Admin Assistance)"
+description: Ask admins for help with non-bug gameplay situations (unstuck, tribe ownership, trading disputes, rule enforcement, etc.). For game bugs, use the 🐞 Bug Report form instead.
+labels: ["player-help", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📢 Read First
+
+        **This form is for player assistance — not bug reports.**  
+        Examples: getting unstuck, tribe ownership issues, rule violations, trading disputes/oversight, structure cleanup after decay blocking, transfer mishaps (with evidence), etc.
+
+        ### ✅ What admins *can* help with
+        - 🔁 **Unstuck / safe-teleport** (case-by-case)
+        - 👥 **Tribe ownership/merge assistance** (ownership disputes, leader inactive, accidental leave)
+        - 🧹 **Structure cleanup** when **decayed** or clearly violating rules (blocking spawns/obelisk/cave entrance)
+        - 💬 **Rule enforcement** (harassment, griefing, obvious exploits, map blocking)
+        - 🤝 **Trading oversight** (pre-arranged) or **trading disputes** with evidence (we use the in-game trading system)
+        - 📦 **Transfer mishaps** (upload/download) **with timestamped evidence** (tribe logs, screenshots)
+
+        ### ❌ What admins generally **do not** do
+        - 🦖 Replace dinos/items/structures lost to **normal gameplay** (wild attacks, starvation, decay timers, despawns, boss wipes)
+        - ⚔️ Compensate losses from **voluntary PvP** actions (including bringing PvE tames to PvP and losing them)
+        - 🔄 Perform server/world rollbacks on request (only for severe, verified incidents)
+        - 🔑 Handle passwords/PINs in public—**never post secrets here**
+
+        > 🛡️ Do not include server IPs, admin passwords, base PINs, or sensitive coordinates publicly. If needed, an admin will contact you privately.
+
+  - type: checkboxes
+    id: acks
+    attributes:
+      label: ✅ Acknowledgements
+      options:
+        - label: I read the above and this is **not** a bug report.
+          required: true
+        - label: I understand normal gameplay losses are **not** reimbursed.
+          required: true
+        - label: I will not post secrets (PINs, passwords, private coords) in this ticket.
+          required: true
+
+  - type: dropdown
+    id: assistance_type
+    attributes:
+      label: 🧭 Assistance type
+      description: Pick the closest match.
+      options:
+        - Unstuck / Safe-teleport
+        - Tribe ownership / merge / unlock assistance
+        - Structure cleanup (decay / blocking)
+        - Rule violation report (harassment / griefing / blocking)
+        - Trading oversight (schedule)
+        - Trading dispute (evidence attached)
+        - Transfer mishap (upload/download)
+        - Other (described below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: map
+    attributes:
+      label: 🗺️ Map / Server
+      options:
+        - The Island - PVP
+        - Scorched Earth - PVE
+        - Extinction - PVE
+        - Astraeos - PVE
+        - Ragnarok - PVE
+        - The Center - PVE
+        - Aberration - PVE
+        - Necrotic Dominion - PVE
+        - Svartalfheim - PVE
+        - Eden - PVE
+        - Nyrandil - PVE
+    validations:
+      required: true
+
+  - type: input
+    id: when
+    attributes:
+      label: 🕒 Date & time (UTC preferred)
+      placeholder: "YYYY-MM-DD HH:MM (UTC)"
+    validations:
+      required: true
+
+  - type: input
+    id: player_name
+    attributes:
+      label: 👤 Your in-game character name
+    validations:
+      required: true
+
+  - type: input
+    id: tribe_name
+    attributes:
+      label: 🏰 Tribe name
+    validations:
+      required: true
+
+  - type: input
+    id: player_ids
+    attributes:
+      label: 🆔 Your identifier(s)
+      description: SteamID/Epic/EOS ID if known
+      placeholder: "e.g., SteamID64: 7656119..., EOS: ..."
+    validations:
+      required: false
+
+  - type: input
+    id: location
+    attributes:
+      label: 📍 Location (optional)
+      description: GPS coords / region / cave / obelisk. Avoid posting sensitive base coords publicly.
+      placeholder: "Example: 42.0 / 58.3 (near Green Obelisk)"
+    validations:
+      required: false
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: 📝 What happened?
+      description: Be concise but specific. Include who/what/when/where.
+      placeholder: "Describe the situation, relevant context, and what you already tried…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: requested_action
+    attributes:
+      label: 🛠️ What help do you need from an admin?
+      placeholder: "E.g., unstuck at X/Y; request tribe owner transfer due to inactive leader; mediate trade; remove decayed pillars at …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 📎 Evidence (screenshots / video / logs)
+      description: For disputes, transfers, and enforcement requests, include **tribe log excerpts**, chat logs, screenshots, or short clips. Drag-and-drop files or paste links.
+      placeholder: "Paste links or attach files. Include timestamps if possible."
+    validations:
+      required: false
+
+  - type: textarea
+    id: trade_details
+    attributes:
+      label: 🤝 Trading details (if oversight/dispute)
+      description: List parties, items/dinos, agreed terms, date/time, and any transaction IDs (from in-game system) if available.
+      placeholder: "Buyer: … / Seller: … / Items: … / Value: … / Time (UTC): … / Evidence links: …"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: permissions
+    attributes:
+      label: 🔓 Admin access permissions (optional)
+      description: Grant temporary permissions if they’re needed to resolve your request. An admin will coordinate privately before any access.
+      options:
+        - label: I consent to an admin teleporting my character if needed.
+        - label: I consent to an admin briefly entering my tribe (temporary role) to resolve this request.
+
+  - type: input
+    id: availability
+    attributes:
+      label: ⏰ Your availability & timezone
+      placeholder: "e.g., 18:00–23:00 ET (UTC-4), most weekdays"
+    validations:
+      required: false
+
+  - type: input
+    id: contact
+    attributes:
+      label: 💬 Discord contact (recommended)
+      placeholder: "yourname#1234 or @handle"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! An admin will review and respond as soon as they can. Please keep notifications on for updates. 🙏
