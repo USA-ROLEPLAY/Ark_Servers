@@ -70,7 +70,7 @@ We have a dedicated support section where you may also raise a ticket with your 
 
 > [!Caution]
 If you are a banned player and you attempting to file an appeal, you will need to create an issue in the [banned](https://github.com/USA-ROLEPLAY/banned) repository.
-Issues related to ban appeals opened in this repository will automatically be closed.
+Issues or discussions related to player bans that are opened in this repository will automatically be closed.
 
 ---
 
