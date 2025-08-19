@@ -5,7 +5,7 @@
 </div>
 <h2 align="center">User Guides</h2>
 
-<sub> In order to contribute a guide, you should open a pull request that adds the guide to the `USER_GUIDES.md` file. These guides are helping hand in for contributors.</sub>
+<sub> In order to contribute a guide, you should open a pull request that adds the guide to the `USER_GUIDES.md` file. These guides are helping hand for contributors.</sub>
 
 [Beacon importing configs](https://usebeacon.app/help/importing_existing_config)
 
