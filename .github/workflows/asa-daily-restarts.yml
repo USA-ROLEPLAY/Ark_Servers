@@ -1,0 +1,180 @@
+name: ASA Daily ARK Containers Restart
+
+on:
+  schedule:
+    # 07:00 America/New_York year-round (DST + Standard Time)
+    - cron: '0 11 * * *'   # 07:00 during DST (UTC-4)
+    - cron: '0 12 * * *'   # 07:00 during Standard Time (UTC-5)
+  workflow_dispatch:
+    inputs:
+      hosts:
+        description: 'Optional: comma/space-separated list of ssh_host_secret keys to run (e.g. ASA_SERVER_1_SSH_HOST ASA_SERVER_2_SSH_HOST)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: write
+
+# Do not coalesce separate runs
+concurrency:
+  group: asa-daily-restarts-${{ github.run_id }}
+  cancel-in-progress: false
+
+env:
+  # Announce/wait timings (prod values shown)
+  WAIT_30M: "1800"
+  WAIT_15M: "900"
+  WAIT_12M: "720"
+  WAIT_3M:  "180"
+
+jobs:
+  build-host-matrix:
+    runs-on: self-hosted
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+    steps:
+      # This first checkout helps self-hosted runners download marketplace actions reliably
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Mint GitHub App token (for any follow-on API calls)
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      # Read deploy/targets.json and produce a host-level matrix
+      - name: Build unique-host matrix from deploy/targets.json
+        id: mk
+        uses: actions/github-script@v7
+        env:
+          HOST_FILTER: ${{ inputs.hosts }}
+        with:
+          github-token: ${{ steps.app.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const manifest = JSON.parse(fs.readFileSync('deploy/targets.json', 'utf8'));
+
+            // Unique ssh_host_secret values (one job per physical host)
+            let hosts = Array.from(new Set(manifest.targets.map(t => t.ssh_host_secret).filter(Boolean)));
+
+            // Optional manual filter (comma/space separated)
+            const filter = (process.env.HOST_FILTER || '').trim();
+            if (filter) {
+              const wanted = new Set(filter.split(/[,\s]+/).filter(Boolean));
+              hosts = hosts.filter(h => wanted.has(h));
+            }
+
+            const matrix = hosts.map(h => ({ ssh_host_secret: h }));
+            core.info(`Daily restart hosts: ${hosts.join(', ') || '(none)'}`);
+            core.setOutput('matrix', JSON.stringify(matrix));
+
+  restart:
+    needs: build-host-matrix
+    if: ${{ needs.build-host-matrix.outputs.matrix != '[]' }}
+    runs-on: self-hosted
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.build-host-matrix.outputs.matrix) }}
+
+    # Ensure only one daily job per *host* at a time
+    concurrency:
+      group: asa-daily-${{ matrix.ssh_host_secret }}
+      cancel-in-progress: false
+
+    env:
+      SSH_USER: ${{ secrets.ASA_SERVER_SSH_USER }}
+      SSH_PORT: ${{ secrets.ASA_SERVER_PORT }}
+      HOST: ${{ secrets[matrix.ssh_host_secret] }}
+
+    steps:
+      # Helps avoid the rare "can't find action.yml" on self-hosted runners
+      - name: Checkout (stabilize action downloads)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+
+      - name: 30-minute warning to all ARK containers
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
+          set -euo pipefail
+          LIST=$(sudo docker ps --format '{{.Names}} {{.Image}}' | grep -i 'asa-linux-server' | awk '{print $1}' || true)
+          if [ -z "$LIST" ]; then echo "No ARK containers found; exiting."; exit 0; fi
+          for c in $LIST; do
+            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for daily reset. Get somewhere safe."
+          done
+          echo "$LIST" > /tmp/ark_list.txt
+          EOF
+
+      - name: Wait 15 minutes
+        run: sleep ${{ env.WAIT_15M }}
+
+      - name: 15-minute warning
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
+          set -euo pipefail
+          LIST=$(cat /tmp/ark_list.txt || true)
+          if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
+          for c in $LIST; do
+            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for daily reset. Get somewhere safe."
+          done
+          EOF
+
+      - name: Wait 12 minutes
+        run: sleep ${{ env.WAIT_12M }}
+
+      - name: 3-minute final warning
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
+          set -euo pipefail
+          LIST=$(cat /tmp/ark_list.txt || true)
+          if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
+          for c in $LIST; do
+            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes. Final warning!"
+          done
+          EOF
+
+      - name: Wait 3 minutes
+        run: sleep ${{ env.WAIT_3M }}
+
+      - name: Save worlds & restart ARK containers
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
+          set -euo pipefail
+          LIST=$(cat /tmp/ark_list.txt || true)
+          if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
+
+          for c in $LIST; do
+            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Saving world and restarting now."
+            sudo docker exec "$c" asa-ctrl rcon --exec "saveworld" || true
+          done
+
+          echo "$LIST" | xargs -r sudo docker restart
+          rm -f /tmp/ark_list.txt || true
+          EOF
+
+      # Auto-rerun guard for transient self-hosted “Post … can’t find action.yml” issues
+      - name: Auto-rerun on transient post-step failure
+        if: failure() && github.run_attempt < 3
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            core.info(`Attempt ${context.runAttempt} failed. Waiting 30s then re-running the workflow...`);
+            await new Promise(r => setTimeout(r, 30000));
+            await github.request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });

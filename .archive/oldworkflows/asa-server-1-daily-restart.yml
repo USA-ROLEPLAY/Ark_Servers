@@ -1,0 +1,99 @@
+# name: ASA Daily ARK Containers Restart (Server 1)
+
+# on:
+#   schedule:
+#     # 07:00 America/New_York year-round (EDT=UTC-4, EST=UTC-5)
+#     - cron: '0 11 * * *'  # 07:00 during DST
+#     - cron: '0 12 * * *'  # 07:00 during Standard Time
+
+# concurrency:
+#   group: asa-server-1-updates
+#   cancel-in-progress: false
+
+# jobs:
+#   daily-restart:
+#     runs-on: self-hosted
+#     timeout-minutes: 90
+
+#     env:
+#       WAIT_30M: 1800
+#       WAIT_15M: 900
+#       WAIT_12M: 720
+#       WAIT_3M: 180
+
+#     steps:
+#       # Checkout avoids weird self-hosted issues pulling marketplace actions
+#       - uses: actions/checkout@v5
+
+#       - name: Setup SSH Key
+#         uses: webfactory/ssh-agent@v0.9.1
+#         with:
+#           ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+
+#       - name: 30-minute warning to all ARK containers
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+#           set -euo pipefail
+#           LIST=$(sudo docker ps --format '{{.Names}} {{.Image}}' | grep -i 'asa-linux-server' | awk '{print $1}' || true)
+#           if [ -z "$LIST" ]; then echo "No ARK containers found; exiting."; exit 0; fi
+#           for c in $LIST; do
+#             sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for daily reset. Get somewhere safe."
+#           done
+#           echo "$LIST" > /tmp/ark_list.txt
+#           EOF
+
+#       - name: Wait 15 minutes before second warning
+#         run: sleep $WAIT_15M
+
+#       - name: 15-minute warning
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+#           set -euo pipefail
+#           LIST=$(cat /tmp/ark_list.txt || true)
+#           if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
+#           for c in $LIST; do
+#             sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 15 minutes for daily reset. Get somewhere safe."
+#           done
+#           EOF
+
+#       - name: Wait 12 minutes before final warning
+#         run: sleep $WAIT_12M
+
+#       - name: 3-minute final warning
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+#           set -euo pipefail
+#           LIST=$(cat /tmp/ark_list.txt || true)
+#           if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
+#           for c in $LIST; do
+#             sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 3 minutes. Final warning."
+#           done
+#           EOF
+
+#       - name: Wait 3 minutes before restart
+#         run: sleep $WAIT_3M
+
+#       - name: Save worlds & restart ARK containers
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.ASA_SERVER_PORT }} \
+#             ${{ secrets.ASA_SERVER_SSH_USER }}@${{ secrets.ASA_SERVER_1_SSH_HOST }} << 'EOF'
+#           set -euo pipefail
+#           LIST=$(cat /tmp/ark_list.txt || true)
+#           if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
+
+#           # Save worlds with a heads-up
+#           for c in $LIST; do
+#             sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Saving world and restarting now."
+#             sudo docker exec "$c" asa-ctrl rcon --exec "saveworld" || true
+#           done
+
+#           # Restart only those ARK containers (not every container on the box)
+#           # xargs -r avoids running docker restart with no args if LIST is empty
+#           echo "$LIST" | xargs -r sudo docker restart
+
+#           # Clean up
+#           rm -f /tmp/ark_list.txt || true
+#           EOF

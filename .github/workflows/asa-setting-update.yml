@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: asa-settings-apply-${{ github.run_id }}
@@ -243,3 +244,20 @@ jobs:
             sleep 5
           done
           EOF
+
+      # --- Auto-rerun on transient runner glitch (e.g., "Can't find action.yml" in post steps) ---
+      - name: Auto-rerun on transient post-step failures
+        if: failure() && github.run_attempt < 3
+        env:
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          TOKEN: ${{ github.token }}
+        run: |
+          echo "Job failed on attempt ${{ github.run_attempt }}. Waiting 30s, then re-running this workflow..."
+          sleep 30
+          curl -sSL -X POST \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/rerun" \
+            || true
+          echo "Re-run requested. This attempt will now finish."
