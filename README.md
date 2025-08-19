@@ -1,7 +1,7 @@
 <div align="center">
   <p align="center">
     <a href="#">
-      <img src="https://raw.githubusercontent.com/USA-ROLEPLAY/repo-resources/main/Org/usa-roleplay-ark.png" height="100px" />
+      <img src="https://raw.githubusercontent.com/USA-ROLEPLAY/repo-resources/main/Org/usa-roleplay-ark.png" width="144px" height="144px"/>
     </a>
   </p>
 </div>
