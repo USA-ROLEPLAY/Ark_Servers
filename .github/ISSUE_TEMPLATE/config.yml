@@ -2,22 +2,10 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: 🐛 Bug Report (Game-breaking)
-    url: https://github.com/USA-ROLEPLAY/Ark_Servers/issues/new?template=bug_report.yml
-    about: Crashes, dupes, exploits, or anything that breaks normal play on a specific map.
-
-  - name: 🆘 Player Help (Admin Assistance)
-    url: https://github.com/USA-ROLEPLAY/Ark_Servers/issues/new?template=player_help.yml
-    about: Tickets for tribe/admin help, trade disputes, stuck characters, etc. (Not for bugs.)
-
-  - name: ⚙️ Game Settings Adjustment
-    url: https://github.com/USA-ROLEPLAY/Ark_Servers/issues/new?template=game_settings_request.yml
-    about: Request tweaks to Game.ini or GameUserSettings.ini values (balance, QoL).
-
-  - name: ✨ Feature Request (Mods / Plugins)
-    url: https://github.com/USA-ROLEPLAY/Ark_Servers/issues/new?template=feature_request.yml
-    about: Suggest new mods or plugins (CurseForge links appreciated).
-
   - name: 💬 Community Discord
     url: https://discord.gg/YURaDVRdet
     about: General chat/support that isn’t a repo issue.
+
+  - name: 📖 Community Discussions
+    url: https://github.com/USA-ROLEPLAY/Ark_Servers/discussions
+    about: Engage with others about ideas, feedback, and discussions related to the community.
