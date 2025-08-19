@@ -9,7 +9,7 @@
 
 [Beacon importing configs](https://usebeacon.app/help/importing_existing_config)
 
-[Creating a docker run ark server similar to ours](https://github.com/mschnitzer/ark-survival-ascended-linux-container-image)
+[Creating a docker based ark server similar to ours](https://github.com/mschnitzer/ark-survival-ascended-linux-container-image)
 
 [Creatinga a local Ark Server on Windows](https://ark.wiki.gg/wiki/Dedicated_server_setup)
 
