@@ -93,7 +93,8 @@ jobs:
     runs-on: self-hosted
     environment:
       name: host-${{ matrix.ssh_host_secret }}
-
+    name: update (${{ matrix.id }})
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -310,20 +311,72 @@ jobs:
             echo "No GameUserSettings.ini changes detected → ❌ no PR"
           fi
 
-      # --- Auto-rerun on transient runner glitch (e.g., "Can't find action.yml" in post steps) ---
-      - name: Auto-rerun on transient post-step failures
-        if: failure() && github.run_attempt < 3
-        env:
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          TOKEN: ${{ github.token }}
-        run: |
-          echo "Job failed on attempt ${{ github.run_attempt }}. Waiting 30s, then re-running this workflow..."
-          sleep 30
-          curl -sSL -X POST \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/rerun" \
-            || true
-          echo "Re-run requested. This attempt will now finish."
+  gate-success:
+    needs: [deploy]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify only allowed post-step failures + summarize
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const run_id = context.runId;
 
+            // Post-steps we tolerate when they fail (the “can’t find action.yml” flake)
+            const ALLOWED = new Set([
+              'Post Setup SSH',
+              'Post Checkout (for PR diffs)'
+            ]);
+
+            const { data } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              run_id,
+              filter: 'latest',
+              per_page: 100
+            });
+
+            const rows = [['Target', 'Result', 'Notes']];
+            const offenders = [];
+
+            for (const job of data.jobs) {
+              // Only consider our matrix shards (named above as "update (<id>)")
+              const m = job.name.match(/^update\s*\(([^)]+)\)/i);
+              if (!m) continue;
+              const target = m[1];
+
+              const allowedFails = [];
+              const disallowedFails = [];
+              let prNote = '';
+
+              for (const s of job.steps || []) {
+                if (s.name === 'Create PR with updated GameUserSettings.ini' && s.conclusion === 'success') {
+                  prNote = 'PR opened';
+                }
+                if (s.conclusion === 'failure') {
+                  (ALLOWED.has(s.name) ? allowedFails : disallowedFails).push(s.name);
+                }
+              }
+
+              if (disallowedFails.length) {
+                offenders.push(`${target}: ${disallowedFails.join(', ')}`);
+                rows.push([target, '❌ Failed', `Failed step(s): ${disallowedFails.join(', ')}`]);
+              } else if (allowedFails.length) {
+                const notes = ['Tolerated: ' + allowedFails.join(', '), prNote].filter(Boolean).join(' | ');
+                rows.push([target, '⚠️ OK (tolerated flake)', notes]);
+              } else {
+                rows.push([target, '✅ OK', prNote]);
+              }
+            }
+
+            await core.summary
+              .addHeading('ASA Compose Deploy — Gate Summary')
+              .addTable(rows)
+              .write();
+
+            if (offenders.length) {
+              core.setFailed('Non-allowed step failures detected:\n' + offenders.join('\n'));
+            } else {
+              core.info('Only allowed post-step flakes (if any). Treating workflow as success.');
+            }
