@@ -20,6 +20,7 @@ Do not break established syntax in this file, as it is automatically updated by 
 
   - #### 📝 Documentation
 
+    - Update joing-the-cluster.md [@jlengelbrecht](https://github.com/jlengelbrecht) ([#60](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/60))
     - Update README.md [@jlengelbrecht](https://github.com/jlengelbrecht) ([#58](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/58))
     - Update CODEOWNERS [@jlengelbrecht](https://github.com/jlengelbrecht) ([#54](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/54))
 
