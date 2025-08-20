@@ -12,5 +12,11 @@ Do not break established syntax in this file, as it is automatically updated by 
 
 ## 2025-08-20
 
+### 🧰 Maintenance
+
+  - #### 📝 Documentation
+
+    - Update CODEOWNERS [@jlengelbrecht](https://github.com/jlengelbrecht) ([#54](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/54))
+
 ## 2025-08-18
 - Initial Release
