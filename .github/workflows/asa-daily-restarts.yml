@@ -95,27 +95,39 @@ jobs:
 
     steps:
       # Helps avoid the rare "can't find action.yml" on self-hosted runners
-      - name: Checkout (stabilize action downloads)
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      # - name: Checkout (stabilize action downloads)
+      #   uses: actions/checkout@v5
+      #   with:
+      #     fetch-depth: 0
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+      # - name: Setup SSH
+      #   uses: webfactory/ssh-agent@v0.9.1
+      #   with:
+      #     ssh-private-key: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
+      # ^ commented out while testing new SSH approach to fix common workflow failure bugs
 
-      - name: 30-minute warning to all ARK containers
+      - name: Setup SSH agent (no post-step)
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.ASA_SERVERS_PRIVATE_KEY }}
         run: |
-          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
           set -euo pipefail
-          LIST=$(sudo docker ps --format '{{.Names}} {{.Image}}' | grep -i 'asa-linux-server' | awk '{print $1}' || true)
-          if [ -z "$LIST" ]; then echo "No ARK containers found; exiting."; exit 0; fi
-          for c in $LIST; do
-            sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for daily reset. Get somewhere safe."
-          done
-          echo "$LIST" > /tmp/ark_list.txt
-          EOF
+          eval "$(ssh-agent -s)"
+          ssh-add - <<< "$SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf 'Host *\n  StrictHostKeyChecking no\n' > ~/.ssh/config
+            - name: 30-minute warning to all ARK containers
+              run: |
+                ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$HOST" << 'EOF'
+                set -euo pipefail
+                LIST=$(sudo docker ps --format '{{.Names}} {{.Image}}' | grep -i 'asa-linux-server' | awk '{print $1}' || true)
+                if [ -z "$LIST" ]; then echo "No ARK containers found; exiting."; exit 0; fi
+                for c in $LIST; do
+                  sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Server restarting in 30 minutes for daily reset. Get somewhere safe."
+                done
+                echo "$LIST" > /tmp/ark_list.txt
+                EOF
 
       - name: Wait 15 minutes
         run: sleep ${{ env.WAIT_15M }}
