@@ -16,17 +16,16 @@ permissions:
   contents: read
   actions: write
 
-# Do not coalesce separate runs
 concurrency:
   group: asa-daily-restarts-${{ github.run_id }}
   cancel-in-progress: false
 
 env:
   # Announce/wait timings (prod values shown)
-  WAIT_30M: "30" # Prod Times: 1800
-  WAIT_15M: "30" # Prod Times: 900
-  WAIT_12M: "30" # Prod Times: 720
-  WAIT_3M:  "30" # Prod Times: 180
+  WAIT_30M: "30"  # Prod: 1800
+  WAIT_15M: "30"  # Prod: 900
+  WAIT_12M: "30"  # Prod: 720
+  WAIT_3M:  "30"  # Prod: 180
 
 jobs:
   build-host-matrix:
@@ -34,7 +33,6 @@ jobs:
     outputs:
       matrix: ${{ steps.mk.outputs.matrix }}
     steps:
-      # This first checkout helps self-hosted runners download marketplace actions reliably
       - name: Checkout
         uses: actions/checkout@v5
         with:
@@ -47,7 +45,6 @@ jobs:
           app-id: ${{ secrets.APP_ID2 }}
           private-key: ${{ secrets.APP_PRIVATE_KEY2 }}
 
-      # Read deploy/targets.json and produce a host-level matrix
       - name: Build unique-host matrix from deploy/targets.json
         id: mk
         uses: actions/github-script@v7
@@ -59,17 +56,22 @@ jobs:
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('deploy/targets.json', 'utf8'));
 
-            // Unique ssh_host_secret values (one job per physical host)
-            let hosts = Array.from(new Set(manifest.targets.map(t => t.ssh_host_secret).filter(Boolean)));
+            let hosts = Array.from(new Set(
+              manifest.targets.map(t => t.ssh_host_secret).filter(Boolean)
+            ));
 
-            // Optional manual filter (comma/space separated)
             const filter = (process.env.HOST_FILTER || '').trim();
             if (filter) {
               const wanted = new Set(filter.split(/[,\s]+/).filter(Boolean));
               hosts = hosts.filter(h => wanted.has(h));
             }
 
-            const matrix = hosts.map(h => ({ ssh_host_secret: h }));
+            // Add a friendly display name for job titles
+            const matrix = hosts.map(h => ({
+              ssh_host_secret: h,
+              display: h.replace(/_SSH_HOST$/, '_CONTAINERS')
+            }));
+
             core.info(`Daily restart hosts: ${hosts.join(', ') || '(none)'}`);
             core.setOutput('matrix', JSON.stringify(matrix));
 
@@ -78,13 +80,13 @@ jobs:
     if: ${{ needs.build-host-matrix.outputs.matrix != '[]' }}
     runs-on: self-hosted
     continue-on-error: true
+    name: restart (${{ matrix.display }})   # <= friendly per-host job name
 
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.build-host-matrix.outputs.matrix) }}
 
-    # Ensure only one daily job per *host* at a time
     concurrency:
       group: asa-daily-${{ matrix.ssh_host_secret }}
       cancel-in-progress: false
@@ -95,7 +97,6 @@ jobs:
       HOST: ${{ secrets[matrix.ssh_host_secret] }}
 
     steps:
-      # Helps avoid the rare "can't find action.yml" on self-hosted runners
       - name: Checkout (stabilize action downloads)
         uses: actions/checkout@v5
         with:
@@ -155,38 +156,34 @@ jobs:
           set -euo pipefail
           LIST=$(cat /tmp/ark_list.txt || true)
           if [ -z "$LIST" ]; then echo "No ARK containers found earlier; exiting."; exit 0; fi
-
           for c in $LIST; do
             sudo docker exec "$c" asa-ctrl rcon --exec "serverchat Saving world and restarting now."
             sudo docker exec "$c" asa-ctrl rcon --exec "saveworld" || true
           done
-
           echo "$LIST" | xargs -r sudo docker restart
           rm -f /tmp/ark_list.txt || true
           EOF
 
   gate-success:
-    # Always run after the matrix, even if some shards “failed”
     needs: [restart]
     if: ${{ always() }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Verify only allowed post-step failures
+      - name: Verify + summarize results
         uses: actions/github-script@v7
         with:
           github-token: ${{ github.token }}
           script: |
             const run_id = context.runId;
 
-            // Steps we agree to ignore if they failed
+            // Steps we agree to ignore if they failed (post-step flakes)
             const ALLOWED = new Set([
               'Post Setup SSH',
               'Post Checkout (stabilize action downloads)'
             ]);
 
-            // Fetch all jobs (includes each matrix shard) with their steps
-            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+            // Collect jobs for this run
+            const { data } = await github.rest.actions.listJobsForWorkflowRun({
               owner: context.repo.owner,
               repo:  context.repo.repo,
               run_id,
@@ -194,23 +191,40 @@ jobs:
               per_page: 100
             });
 
+            const rows = [['Host', 'Result', 'Notes']];
             const offenders = [];
 
-            for (const job of jobs.data.jobs) {
-              // Only police the restart shards
-              if (!job.name.startsWith('restart')) continue;
+            for (const job of data.jobs) {
+              const m = job.name.match(/^restart\s*\(([^)]+)\)/i);
+              if (!m) continue; // only our matrix shards
+              const host = m[1];
+
+              const allowedFails = [];
+              const disallowedFails = [];
 
               for (const s of job.steps || []) {
-                if (s.conclusion === 'failure' && !ALLOWED.has(s.name)) {
-                  offenders.push(`- ${job.name}: ${s.name}`);
+                if (s.conclusion === 'failure') {
+                  (ALLOWED.has(s.name) ? allowedFails : disallowedFails).push(s.name);
                 }
+              }
+
+              if (disallowedFails.length) {
+                offenders.push(`${host}: ${disallowedFails.join(', ')}`);
+                rows.push([host, '❌ Failed', `Failed step(s): ${disallowedFails.join(', ')}`]);
+              } else if (allowedFails.length) {
+                rows.push([host, '⚠️ OK (tolerated flake)', `Tolerated: ${allowedFails.join(', ')}`]);
+              } else {
+                rows.push([host, '✅ OK', '']);
               }
             }
 
+            await core.summary
+              .addHeading('ASA Daily Restart — Gate Summary')
+              .addTable(rows)
+              .write();
+
             if (offenders.length) {
-              core.setFailed(
-                "Non-allowed step failures detected:\n" + offenders.join("\n")
-              );
+              core.setFailed('Non-allowed step failures detected:\n' + offenders.join('\n'));
             } else {
-              core.info("Only allowed post-step flakes (if any). Treating workflow as success.");
+              core.info('Only allowed post-step flakes (if any). Treating workflow as success.');
             }
