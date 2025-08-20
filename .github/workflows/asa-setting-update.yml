@@ -92,6 +92,8 @@ jobs:
     needs: build-matrix
     if: ${{ needs.build-matrix.outputs.matrix != '[]' }}
     runs-on: self-hosted
+    name: apply (${{ matrix.id }})
+    continue-on-error: true
     environment:
       name: host-${{ matrix.ssh_host_secret }}
 
@@ -245,19 +247,72 @@ jobs:
           done
           EOF
 
-      # --- Auto-rerun on transient runner glitch (e.g., "Can't find action.yml" in post steps) ---
-      - name: Auto-rerun on transient post-step failures
-        if: failure() && github.run_attempt < 3
-        env:
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          TOKEN: ${{ github.token }}
-        run: |
-          echo "Job failed on attempt ${{ github.run_attempt }}. Waiting 30s, then re-running this workflow..."
-          sleep 30
-          curl -sSL -X POST \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/rerun" \
-            || true
-          echo "Re-run requested. This attempt will now finish."
+  gate-success:
+    needs: [apply]
+    if: ${{ always() }}             # run even if some shards show failed
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify only allowed post-step failures and summarize
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const run_id = context.runId;
+
+            // Post-step names we agree to tolerate if they "fail"
+            const ALLOWED = new Set([
+              'Post Setup SSH',
+              'Post Checkout (for host update)',
+              'Post Checkout'                         // safety catch-all for naming drift
+            ]);
+
+            // Pull all jobs/steps from this workflow run
+            const { data } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              run_id,
+              per_page: 100,
+              filter: 'latest'
+            });
+
+            const rows = [];
+            const offenders = [];
+
+            for (const job of data.jobs) {
+              // Only look at the apply shards
+              if (!job.name || !job.name.startsWith('apply (')) continue;
+
+              const failed = (job.steps || []).filter(s => s.conclusion === 'failure');
+              const tolerated = failed.filter(s => ALLOWED.has(s.name));
+              const bad = failed.filter(s => !ALLOWED.has(s.name));
+
+              let result = '✅ pass';
+              let notes = '';
+
+              if (bad.length) {
+                result = '❌ fail';
+                notes = `Failed: ${bad.map(s => s.name).join(', ')}`;
+                offenders.push(`- ${job.name}: ${bad.map(s => s.name).join(', ')}`);
+              } else if (tolerated.length) {
+                result = '✅ pass (tolerated flake)';
+                notes = `Tolerated: ${tolerated.map(s => s.name).join(', ')}`;
+              }
+
+              rows.push(`| ${job.name} | ${result} | ${notes} |`);
+            }
+
+            // Nice summary table
+            let md = `## ASA Settings Apply — Gate\n\n`;
+            if (rows.length) {
+              md += `| Target | Result | Notes |\n|---|---|---|\n${rows.join('\n')}\n`;
+            } else {
+              md += `_No apply shards ran (empty matrix)._`;
+            }
+            core.summary.addRaw(md).write();
+
+            if (offenders.length) {
+              core.setFailed("Non-allowed step failures detected:\n" + offenders.join("\n"));
+            } else {
+              core.info("Only allowed post-step flakes (if any). Treating workflow as success.");
+            }
