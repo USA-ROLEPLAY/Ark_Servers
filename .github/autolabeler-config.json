@@ -1,0 +1,62 @@
+{
+  "new": [
+    {
+      "fileStatus": "added",
+      "includeGlobs": [
+        "ASA/**",
+        "deploy/**",
+        "docs/**"
+      ],
+      "excludeGlobs": []
+    }
+  ],
+  "updated": [
+    {
+      "fileStatus": "modified",
+      "includeGlobs": [
+        "ASA/**",
+        "deploy/**",
+        "docs/**"
+      ],
+      "excludeGlobs": []
+    }
+  ],
+  "deleted": [
+    {
+      "fileStatus": "removed",
+      "includeGlobs": [
+        "ASA/**",
+        "deploy/**",
+        "docs/**"
+      ],
+      "excludeGlobs": []
+    }
+  ],
+  "archived": [
+    {
+      "fileStatus": "added",
+      "includeGlobs": [
+        ".archive/**"
+      ],
+      "excludeGlobs": []
+    }
+  ],
+  "maintenance": [
+    {
+      "fileStatus": null,
+      "includeGlobs": [
+        "*.md"
+      ],
+      "excludeGlobs": []
+    }
+  ],
+  "github": [
+    {
+      "fileStatus": null,
+      "includeGlobs": [
+        ".github/**"
+      ],
+      "excludeGlobs": []
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+name: Auto Label Pull Requests
+
+on:
+  workflow_dispatch:
+  pull_request_target:
+    branches: ["main"]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  autolabeler:
+    # Limit to the Ark_Servers repo
+    if: github.repository == 'USA-ROLEPLAY/Ark_Servers'
+    runs-on: ubuntu-latest
+    env:
+      CONFIG_PATH: .github/autolabeler-config.json
+    steps:
+      - name: Checkout (shallow is fine)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Install minimatch
+        run: npm install minimatch
+
+      - name: Label PR based on file changes, config, and PR template
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs').promises;
+            const path = require('path');
+            const { minimatch } = require('minimatch');
+
+            // --- Load config
+            const cfgPath = path.resolve(process.env.CONFIG_PATH);
+            let autolabelerConfig = {};
+            try {
+              autolabelerConfig = JSON.parse(await fs.readFile(cfgPath, 'utf8'));
+            } catch (e) {
+              core.warning(`Could not read ${cfgPath}: ${e.message}. Proceeding with heuristics only.`);
+            }
+
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+            const prBody = pr.body || "";
+            const prTitle = pr.title || "";
+
+            // --- Gather changed files
+            const filesResp = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              per_page: 300
+            });
+            const prFiles = filesResp.data || [];
+
+            const labels = new Set();
+
+            // --- Helper: apply autolabeler-config rules
+            const applyConfigRules = () => {
+              for (const [label, rules] of Object.entries(autolabelerConfig)) {
+                const matched = prFiles.some((f) =>
+                  rules.some((rule) => {
+                    const statusOk = rule.fileStatus ? rule.fileStatus === f.status : true;
+                    const includeOk = (rule.includeGlobs || []).some((g) => minimatch(f.filename, g));
+                    const excludeHit = (rule.excludeGlobs || []).some((g) => minimatch(f.filename, g));
+                    return statusOk && includeOk && !excludeHit;
+                  })
+                );
+                if (matched) labels.add(label);
+              }
+            };
+
+            // --- Heuristics for Ark repo
+            const applyArkHeuristics = () => {
+              for (const f of prFiles) {
+                const file = f.filename;
+
+                // INI changes
+                if (minimatch(file, '**/Game.ini') || minimatch(file, '**/GameUserSettings.ini')) {
+                  labels.add('ini change');
+                }
+
+                // Docker compose changes
+                if (minimatch(file, 'ASA/**/docker-compose.yaml')) {
+                  if (f.status === 'added') labels.add('new server');
+                  if (f.status === 'modified') labels.add('updated');
+                }
+
+                // Docs & GitHub meta
+                if (minimatch(file, '*.md') || minimatch(file, 'docs/**')) {
+                  labels.add('maintenance');
+                }
+                if (minimatch(file, '.github/**')) {
+                  labels.add('github');
+                }
+              }
+
+              // Auto-sync PRs (from your compose workflow)
+              if (/\[auto-gus-sync\]/i.test(prTitle)) {
+                labels.add('gus-sync');
+                labels.add('auto-merge');
+              }
+            };
+
+            // --- From PR template checkboxes
+            const applyTemplateMappings = () => {
+              const map = [
+                { box: '🐛 **Bug fix**',                       label: 'bugfix' },
+                { box: '✨ **New feature**',                   label: 'feature' },
+                { box: '💾 **INI change**',                    label: 'ini change' },
+                { box: '🐋 **New server**',                   label: 'new server' },
+                { box: '🔧 **Refactoring / Code Cleanup**',   label: 'refactor' },
+                { box: '📖 **Documentation update**',         label: 'maintenance' }
+              ];
+
+              for (const { box, label } of map) {
+                const esc = box.replace(/([.*+?^${}()|[\]\\])/g, '\\$&');
+                const re = new RegExp(`- \\[(x|X)\\]\\s*${esc}`, 'i');
+                if (re.test(prBody)) labels.add(label);
+              }
+            };
+
+            applyConfigRules();
+            applyArkHeuristics();
+            applyTemplateMappings();
+
+            if (labels.size === 0) labels.add('needs triage');
+
+            const finalLabels = Array.from(labels);
+
+            core.info(`Will add labels: ${finalLabels.join(', ')}`);
+            if (finalLabels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels: finalLabels
+              });
+            }
