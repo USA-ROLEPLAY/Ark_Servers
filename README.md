@@ -60,6 +60,17 @@ Additionally we have detailed information pertaining to the cluster in the [clus
 > We are a Primal focused cluster and this is the base requirement for our servers.
 > In order to play on our servers, you will need purchase the [Primal Nemesis](https://www.curseforge.com/ark-survival-ascended/mods/ark-primal-nemesis) mod.
 
+---
+
+## 🎮 Features
+
+- **Boosted Server Rates**: Gain experiance quicker and gain more resources faster.
+- **Challenging Worlds**: Explore the a variety of biomes and environments across our 11 running ARK servers.
+- **Mods**: Play with a wide range of mods for a enhanced ARK experience.
+- **Automated Server Updates**: Get notified of updates to our ARK Servers including Game Settings in a timely manner.
+
+---
+
 ## 💡 Future Plans
 
 - Adding Valguero Server once release September 30th.
@@ -69,13 +80,6 @@ Additionally we have detailed information pertaining to the cluster in the [clus
 - Updates to our website as it relates to Ark.
 - Plugins for ARK including CI / CD.
 - Tabex Store for ARK.
-
-## 🎮 Features
-
-- **Boosted Server Rates**: Gain experiance quicker and gain more resources faster.
-- **Challenging Worlds**: Explore the a variety of biomes and environments across our 11 running ARK servers.
-- **Mods**: Play with a wide range of mods for a enhanced ARK experience.
-- **Automated Server Updates**: Get notified of updates to our ARK Servers including Game Settings in a timely manner.
 
 ---
 
