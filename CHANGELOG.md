@@ -12,6 +12,10 @@ Do not break established syntax in this file, as it is automatically updated by 
 
 ## 2025-08-20
 
+### 🆕 New Content
+
+  - added some new docs :book: [@jlengelbrecht](https://github.com/jlengelbrecht) ([#56](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/56))
+
 ### 🧰 Maintenance
 
   - #### 📝 Documentation
