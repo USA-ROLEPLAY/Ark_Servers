@@ -38,7 +38,7 @@
 
 > [!IMPORTANT]
 > Our Ark Servers are still in active development.
-> Even though they are fully functional, we may still make changes to them to balance and optimizeganmeplay.
+> Even though they are fully functional, we may still make changes to them to balance and optimize gameplay.
 > In the current state of the servers, there maybe bugs and unexpected behavior.
 > Server maintenance and bug fixes will be done as soon as possible.
 > We appreciate your patience and understanding while we work towards a production-ready state.
