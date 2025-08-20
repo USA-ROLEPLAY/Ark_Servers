@@ -116,8 +116,8 @@ jobs:
         id: app
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.APP_ID2 }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY2 }}
 
       - name: Checkout (for PR diffs)
         uses: actions/checkout@v5
