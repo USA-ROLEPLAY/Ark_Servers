@@ -36,12 +36,39 @@
 
 ---
 
+> [!IMPORTANT]
+> Our Ark Servers are still in active development.
+> Even though they are fully functional, we may still make changes to them to balance and optimizeganmeplay.
+> In the current state of the servers, there maybe bugs and unexpected behavior.
+> Server maintenance and bug fixes will be done as soon as possible.
+> We appreciate your patience and understanding while we work towards a production-ready state.
+
 ## 🔍 Project Overview
 
 The **Ark_Servers** repository contains the source code for the USARoleplay ARK Servers.
 This repository is used to manage our self-hosted ARK Servers.
 
 ---
+
+## 🦖 How to join the USARoleplay ARK Servers?
+
+To join the USARoleplay ARK Servers, please read our [joing-the-cluster](https://github.com/USA-ROLEPLAY/Ark_Servers/blob/main/docs/cluster-info/joing-the-cluster.md) doc. 
+
+Additionally we have detailed information pertaining to the cluster in the [cluster-info](https://github.com/USA-ROLEPLAY/Ark_Servers/blob/main/docs/cluster-info/) section of our repository.
+
+> [!IMPORTANT]
+> We are a Primal focused cluster and this is the base requirement for our servers.
+> In order to play on our servers, you will need purchase the [Primal Nemesis](https://www.curseforge.com/ark-survival-ascended/mods/ark-primal-nemesis) mod.
+
+## 💡 Future Plans
+
+- Adding Valguero Server once release September 30th.
+- Creating our own container images for ARK ASA and ASE.
+- CI / CD for ASA and ASE container images.
+- Releases for the repository.
+- Updates to our website as it relates to Ark.
+- Plugins for ARK including CI / CD.
+- Tabex Store for ARK.
 
 ## 🎮 Features
 
@@ -78,5 +105,11 @@ Issues or discussions related to player bans that are opened in this repository 
 
 If you have any feedback, please create use our [Discussions](https://github.com/USA-ROLEPLAY/Ark_Servers/discussions) page.
 This is a great place to share your thoughts with the community and be informed of any updates or changes outside of our [Discord](https://discord.gg/YURaDVRdet)
+
+---
+
+## ⭐ Star Us On GitHub
+
+If you like what we are doing, please give us a star on [GitHub](https://github.com/USA-ROLEPLAY/Ark_Servers) so we can continue to grow and improve.
 
 ---

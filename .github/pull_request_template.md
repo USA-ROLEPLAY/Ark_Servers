@@ -14,7 +14,7 @@ Link: #
 - [ ] I have read the [User Guides](https://github.com/USA-ROLEPLAY/Ark_Servers/blob/main/.github/CONTRIBUTOR_GUIDES/USER_GUIDES.md)
 - [ ] I validated with [Beacon](https://usebeacon.app/) and a local test server or single player game
 - [ ] Targeted the correct map directory
-- [ ] I explainmed why the change benefits the server
+- [ ] I explained why the change benefits the server
 
 ---
 
