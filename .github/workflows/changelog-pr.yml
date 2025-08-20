@@ -68,32 +68,31 @@ jobs:
                 ...obj,
                 notes: [],
                 subCategories: obj.subCategories ?? (
-                    obj.labels.includes("updated") ? [
+                  obj.labels.includes("updated") ? [
                     { title: "💾 INI Settings Changes", labels: ["ini change"], notes: [] },
                     { title: "✨ New Features",        labels: ["feature"],    notes: [] },
                     { title: "🐛 Bug Fixes",           labels: ["bugfix"],     notes: [] },
                     { title: "🔧 Refactor",            labels: ["refactor"],   notes: [] },
-                    ] :
-                    obj.labels.includes("maintenance") ? [
+                  ] :
+                  obj.labels.includes("maintenance") ? [
                     { title: "📝 Documentation", labels: ["maintenance"], notes: [] },
                     { title: "📂 GitHub / CI",   labels: ["github"],      notes: [] },
-                    ] :
-                    // No default subcategories for these (they're flat buckets)
-                    (obj.labels.includes("new") ||
-                    obj.labels.includes("gus-sync") ||
-                    obj.labels.includes("auto-merge") ||
-                    obj.labels.includes("deleted") ||
-                    obj.labels.includes("archived")) ? [] :
-                    []
+                  ] :
+                  (obj.labels.includes("new") ||
+                   obj.labels.includes("gus-sync") ||
+                   obj.labels.includes("auto-merge") ||
+                   obj.labels.includes("deleted") ||
+                   obj.labels.includes("archived")) ? [] : []
                 )
-                }));
+              }));
 
               const latestDateInChangelog = new Date(process.env.LATEST_DATE);
               latestDateInChangelog.setUTCHours(23, 59, 59, 999);
 
+              // 🛠 FIX: query this repository, not ProxmoxVE
               const { data: pulls } = await github.rest.pulls.list({
                 owner: context.repo.owner,
-                repo: "ProxmoxVE",
+                repo: context.repo.repo,
                 base: "main",
                 state: "closed",
                 sort: "updated",
@@ -111,69 +110,61 @@ jobs:
 
               for (const pr of filteredPRs) {
                 const prLabels = pr.labels.map(label => label.name.toLowerCase());
+                let prNote;
+
+                // keep the special-case block if you really need it; otherwise this is fine
                 if (pr.user.login.includes("push-app-to-main[bot]")) {
-
                   const scriptName = pr.title;
-                    try {
-                      const { data: relatedIssues } = await github.rest.issues.listForRepo({
-                        owner: context.repo.owner,
-                        repo: "ProxmoxVED",
-                        state: "all",
-                        labels: ["Started Migration To ProxmoxVE"]
-                      });
-
-                      const matchingIssue = relatedIssues.find(issue =>
-                        issue.title.toLowerCase().includes(scriptName.toLowerCase())
-                      );
-
-                      if (matchingIssue) {
-                        const issueAuthor = matchingIssue.user.login;
-                        const issueAuthorUrl = `https://github.com/${issueAuthor}`;
-                        prNote = `- ${pr.title} [@${issueAuthor}](${issueAuthorUrl}) ([#${pr.number}](${pr.html_url}))`;
-                      }
-                      else {
-                        prNote = `- ${pr.title} ([#${pr.number}](${pr.html_url}))`;
-                      }
-                    } catch (error) {
-                      console.error(`Error fetching related issues: ${error}`);
+                  try {
+                    const { data: relatedIssues } = await github.rest.issues.listForRepo({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      state: "all",
+                      labels: ["Started Migration To Ark_Servers"]
+                    });
+                    const matchingIssue = relatedIssues.find(issue =>
+                      issue.title.toLowerCase().includes(scriptName.toLowerCase())
+                    );
+                    if (matchingIssue) {
+                      const issueAuthor = matchingIssue.user.login;
+                      const issueAuthorUrl = `https://github.com/${issueAuthor}`;
+                      prNote = `- ${pr.title} [@${issueAuthor}](${issueAuthorUrl}) ([#${pr.number}](${pr.html_url}))`;
+                    } else {
                       prNote = `- ${pr.title} ([#${pr.number}](${pr.html_url}))`;
                     }
-                }else{
+                  } catch (error) {
+                    console.error(`Error fetching related issues: ${error}`);
+                    prNote = `- ${pr.title} ([#${pr.number}](${pr.html_url}))`;
+                  }
+                } else {
                   prNote = `- ${pr.title} [@${pr.user.login}](https://github.com/${pr.user.login}) ([#${pr.number}](${pr.html_url}))`;
                 }
 
-
-                if (prLabels.includes("new script")) {
-                  const newScriptCategory = categorizedPRs.find(category =>
-                  category.title === "New Scripts" || category.labels.includes("new script"));
-                  if (newScriptCategory) {
-                  newScriptCategory.notes.push(prNote);
-                  }
+                // 🛠 align to your labels/category for "New Content"
+                if (prLabels.includes("new")) {
+                  const newCategory = categorizedPRs.find(category =>
+                    category.title === "🆕 New Content" || (category.labels || []).includes("new")
+                  );
+                  if (newCategory) newCategory.notes.push(prNote);
                 } else {
-
                   let categorized = false;
-                  const priorityCategories = categorizedPRs.slice();
-                  for (const category of priorityCategories) {
-                  if (categorized) break;
-                  if (category.labels.some(label => prLabels.includes(label))) {
-                    if (category.subCategories && category.subCategories.length > 0) {
-                    const subCategory = category.subCategories.find(sub =>
-                      sub.labels.some(label => prLabels.includes(label))
-                    );
-
-                    if (subCategory) {
-                      subCategory.notes.push(prNote);
-                    } else {
-                      category.notes.push(prNote);
+                  for (const category of categorizedPRs) {
+                    if (categorized) break;
+                    const catLabels = (category.labels || []).map(l => l.toLowerCase());
+                    if (catLabels.some(label => prLabels.includes(label))) {
+                      if (category.subCategories && category.subCategories.length > 0) {
+                        const sub = category.subCategories.find(sub =>
+                          (sub.labels || []).some(label => prLabels.includes(label))
+                        );
+                        if (sub) sub.notes.push(prNote);
+                        else category.notes.push(prNote);
+                      } else {
+                        category.notes.push(prNote);
+                      }
+                      categorized = true;
                     }
-                    } else {
-                    category.notes.push(prNote);
-                    }
-                    categorized = true;
-                  }
                   }
                 }
-
               }
 
               return categorizedPRs;
