@@ -44,8 +44,8 @@ jobs:
         id: app
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.APP_ID2 }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY2 }}
 
       # Read deploy/targets.json and produce a host-level matrix
       - name: Build unique-host matrix from deploy/targets.json
