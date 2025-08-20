@@ -13,8 +13,8 @@
 # Set default reviewers
 *                                                                           @USA-ROLEPLAY/Org-Managers
 
-# All changes related to .github files
+# CI / workflows / meta
 /.github/                                                                  @USA-ROLEPLAY/Org-Managers
 
-# All changes related to server files
-/ASA/                                                                      @USA-ROLEPLAY/Server-Admins
+# Server config
+/ASA/                                                                      @USA-ROLEPLAY/Server-Admins @USA-ROLEPLAY/org-managers
