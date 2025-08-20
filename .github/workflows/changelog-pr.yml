@@ -68,23 +68,23 @@ jobs:
                 ...obj,
                 notes: [],
                 subCategories: obj.subCategories ?? (
-                  obj.labels.includes("updated") ? [
+                    obj.labels.includes("updated") ? [
                     { title: "💾 INI Settings Changes", labels: ["ini change"], notes: [] },
                     { title: "✨ New Features",        labels: ["feature"],    notes: [] },
                     { title: "🐛 Bug Fixes",           labels: ["bugfix"],     notes: [] },
-                    { title: "🔧 Refactor",            labels: ["refactor"],   notes: [] },
-                  ] :
-                  obj.labels.includes("maintenance") ? [
+                    { title: "🔧 Refactor",            labels: ["refactor"],   notes: [] }
+                    ] :
+                    obj.labels.includes("maintenance") ? [
                     { title: "📝 Documentation", labels: ["maintenance"], notes: [] },
-                    { title: "📂 GitHub / CI",   labels: ["github"],      notes: [] },
-                  ] :
-                  (obj.labels.includes("new") ||
-                   obj.labels.includes("gus-sync") ||
-                   obj.labels.includes("auto-merge") ||
-                   obj.labels.includes("deleted") ||
-                   obj.labels.includes("archived")) ? [] : []
+                    { title: "📂 GitHub / CI",   labels: ["github"],      notes: [] }
+                    ] :
+                    (obj.labels.includes("new") ||
+                    obj.labels.includes("gus-sync") ||
+                    obj.labels.includes("auto-merge") ||
+                    obj.labels.includes("deleted") ||
+                    obj.labels.includes("archived")) ? [] : []
                 )
-              }));
+                }));
 
               const latestDateInChangelog = new Date(process.env.LATEST_DATE);
               latestDateInChangelog.setUTCHours(23, 59, 59, 999);

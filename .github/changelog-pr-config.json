@@ -7,42 +7,18 @@
     "title": "🚀 Updates",
     "labels": ["updated"],
     "subCategories": [
-      {
-        "title": "💾 INI Settings Changes",
-        "labels": ["ini change"],
-        "notes": []
-      },
-      {
-        "title": "✨ New Features",
-        "labels": ["feature"],
-        "notes": []
-      },
-      {
-        "title": "🐛 Bug Fixes",
-        "labels": ["bugfix"],
-        "notes": []
-      },
-      {
-        "title": "🔧 Refactor",
-        "labels": ["refactor"],
-        "notes": []
-      }
+      { "title": "💾 INI Settings Changes", "labels": ["ini change"], "notes": [] },
+      { "title": "✨ New Features",         "labels": ["feature"],    "notes": [] },
+      { "title": "🐛 Bug Fixes",            "labels": ["bugfix"],     "notes": [] },
+      { "title": "🔧 Refactor",             "labels": ["refactor"],   "notes": [] }
     ]
   },
   {
     "title": "🧰 Maintenance",
     "labels": ["maintenance"],
     "subCategories": [
-      {
-        "title": "📝 Documentation",
-        "labels": ["maintenance"],
-        "notes": []
-      },
-      {
-        "title": "📂 GitHub / CI",
-        "labels": ["github"],
-        "notes": []
-      }
+      { "title": "📝 Documentation", "labels": ["maintenance"], "notes": [] },
+      { "title": "📂 GitHub / CI",   "labels": ["github"],      "notes": [] }
     ]
   },
   {
