@@ -1,6 +1,6 @@
 # 🎮 **How to Join the USARoleplay ARK Servers**
 
-> **[!IMPORTANT]**
+> [!IMPORTANT]
 > We are a Primal focused cluster and this is the base requirement for our servers.
 > In order to play on our servers, you will need purchase the [Primal Nemesis](https://www.curseforge.com/ark-survival-ascended/mods/ark-primal-nemesis) mod.
 > All other freemium mods are optional you can find a full breakdown of out mods in the [Mod List](https://github.com/USA-ROLEPLAY/Ark_Servers/blob/main/docs/cluster-info/mod-list.md).
