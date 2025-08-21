@@ -14,6 +14,10 @@ Do not break established syntax in this file, as it is automatically updated by 
 
 ### 🚀 Updates
 
+  - #### 💾 INI Settings Changes
+
+    - Update GameUserSettings.ini [@odin0724](https://github.com/odin0724) ([#72](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/72))
+
   - #### 🔧 Refactor
 
     - Update docker-compose.yaml [@jlengelbrecht](https://github.com/jlengelbrecht) ([#70](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/70))
