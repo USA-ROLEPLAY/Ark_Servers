@@ -10,6 +10,14 @@
 > [!IMPORTANT]
 Do not break established syntax in this file, as it is automatically updated by a Github Workflow
 
+## 2025-08-21
+
+### 🚀 Updates
+
+  - #### 🔧 Refactor
+
+    - Update docker-compose.yaml [@jlengelbrecht](https://github.com/jlengelbrecht) ([#70](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/70))
+
 ## 2025-08-20
 
 ### 🆕 New Content
