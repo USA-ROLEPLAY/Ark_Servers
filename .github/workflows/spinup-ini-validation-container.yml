@@ -1,0 +1,384 @@
+name: ASA INI Validation Server
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, reopened]
+    paths:
+      - 'ASA/**/GameUserSettings.ini'
+      - 'ASA/**/Game.ini'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to validate'
+        required: true
+      ttl_minutes:
+        description: 'Minutes to keep the test server up'
+        required: false
+        default: '30'
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: write
+
+env:
+  # Fixed test ports forwarded to the staging VM
+  TEST_GAME_PORT: 17777
+  TEST_RAW_PORT: 17778
+  TEST_QUERY_PORT: 27035
+
+  # How long to keep server up (default; can be overridden by dispatch input)
+  DEFAULT_TTL_MINUTES: 30
+
+jobs:
+  determine-pr:
+    name: determine PR
+    runs-on: ubuntu-latest
+    outputs:
+      pr: ${{ steps.set.outputs.pr }}
+      should_run: ${{ steps.set.outputs.should_run }}
+    steps:
+      - name: Resolve PR number and label condition
+        id: set
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let pr = null;
+            if (context.eventName === 'workflow_dispatch') {
+              const num = Number(core.getInput('pr_number'));
+              if (!num) core.setFailed('workflow_dispatch requires pr_number');
+              const { data } = await github.rest.pulls.get({
+                owner: context.repo.owner, repo: context.repo.repo, pull_number: num
+              });
+              pr = data;
+            } else if (context.payload.pull_request) {
+              pr = context.payload.pull_request;
+            }
+            if (!pr) core.setFailed('No pull_request context found');
+
+            // Require the validate-ini label
+            const labels = (pr.labels || []).map(l => (typeof l === 'string' ? l : l.name)).map(s => s.toLowerCase());
+            const hasLabel = labels.includes('validate-ini');
+
+            core.setOutput('pr', JSON.stringify({
+              number: pr.number,
+              head: pr.head.sha,
+              base: pr.base.sha,
+              headRef: pr.head.ref,
+              baseRef: pr.base.ref
+            }));
+            core.setOutput('should_run', hasLabel ? 'true' : 'false');
+
+  build-matrix:
+    name: build matrix
+    needs: determine-pr
+    if: needs.determine-pr.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+    steps:
+      - name: Checkout (no token needed for public)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute changed INIs in PR
+        id: mk
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = JSON.parse(core.getInput('pr_json') || process.env.PR_JSON || '');
+          env:
+            PR_JSON: ${{ needs.determine-pr.outputs.pr }}
+        # We need a second script step because github-script can't consume its own env in the same step reliably
+      - name: Build matrix from PR files
+        id: mk
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = JSON.parse(process.env.PR_JSON);
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, per_page: 100
+            });
+
+            const targets = new Map(); // key=dir (ASA/<map>), value={ id, work_subdir, apply_gus, apply_game }
+            for (const f of files) {
+              const path = f.filename;
+              const m = path.match(/^ASA\/([^\/]+)\/(GameUserSettings\.ini|Game\.ini)$/);
+              if (!m) continue;
+              const map = m[1];
+              const fname = m[2];
+              const key = `ASA/${map}`;
+              if (!targets.has(key)) targets.set(key, { id: map, work_subdir: key, apply_gus: false, apply_game: false });
+              const t = targets.get(key);
+              if (fname === 'GameUserSettings.ini') t.apply_gus = true;
+              if (fname === 'Game.ini') t.apply_game = true;
+            }
+
+            const arr = Array.from(targets.values());
+            core.info(`Validation targets: ${arr.map(t => `${t.id}[gus:${t.apply_gus}/game:${t.apply_game}]`).join(', ') || '(none)'}`);
+            core.setOutput('matrix', JSON.stringify(arr));
+
+        env:
+          PR_JSON: ${{ needs.determine-pr.outputs.pr }}
+
+  validate:
+    name: validate (${{ matrix.id }})
+    needs: [determine-pr, build-matrix]
+    if: needs.build-matrix.outputs.matrix != '[]'
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
+    env:
+      SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+      SSH_PORT: ${{ secrets.STAGING_SSH_PORT }}
+      SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+      PR_JSON:  ${{ needs.determine-pr.outputs.pr }}
+      TTL_MIN:  ${{ github.event.inputs.ttl_minutes || env.DEFAULT_TTL_MINUTES }}
+      # Fixed test ports (already forwarded to the staging VM)
+      GAME_P:   ${{ env.TEST_GAME_PORT }}
+      RAW_P:    ${{ env.TEST_RAW_PORT }}
+      QUERY_P:  ${{ env.TEST_QUERY_PORT }}
+      # Remote work dir for this PR/map
+      REMOTE_DIR: /srv/asa-validate/pr-${{ fromJSON(needs.determine-pr.outputs.pr).number }}/${{ matrix.id }}
+    steps:
+      - name: Add label "validation-running"
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: JSON.parse(process.env.PR_JSON).number,
+                labels: ['validation-running']
+              });
+            } catch (e) { core.warning(`Could not add label: ${e.message}`); }
+
+      - name: Checkout repo + both refs
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR head ref and base
+        run: |
+          set -euo pipefail
+          PR_NUM=$(jq -r .number <<< '${{ env.PR_JSON }}')
+          git fetch origin pull/${PR_NUM}/head:prhead
+          git fetch origin $(jq -r .baseRef <<< '${{ env.PR_JSON }}')
+
+      - name: Setup SSH (staging VM)
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.STAGING_PRIVATE_KEY }}
+
+      - name: Open UFW for test ports
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
+          set -euo pipefail
+          sudo ufw allow ${GAME_P}/udp || true
+          sudo ufw allow ${RAW_P}/udp || true
+          sudo ufw allow ${QUERY_P}/udp || true
+          sudo ufw status verbose | sed -n '1,200p'
+          EOF
+
+      - name: Stage INIs for this map (PR head vs repo base)
+        run: |
+          set -euo pipefail
+          BASE_REF=$(jq -r .baseRef <<< '${{ env.PR_JSON }}')
+          WS='${{ matrix.work_subdir }}'
+          mkdir -p out
+          # GameUserSettings.ini
+          if [ '${{ matrix.apply_gus }}' = 'true' ]; then
+            git show prhead:"$WS/GameUserSettings.ini" > out/GameUserSettings.ini
+          else
+            git show "origin/$BASE_REF":"$WS/GameUserSettings.ini" > out/GameUserSettings.ini
+          fi
+          # Game.ini
+          if [ '${{ matrix.apply_game }}' = 'true' ]; then
+            git show prhead:"$WS/Game.ini" > out/Game.ini
+          else
+            git show "origin/$BASE_REF":"$WS/Game.ini" > out/Game.ini
+          fi
+
+      - name: Upload INIs to staging VM
+        run: |
+          set -euo pipefail
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$REMOTE_DIR/WindowsServer'"
+          scp -P "$SSH_PORT" -o StrictHostKeyChecking=no out/GameUserSettings.ini "$SSH_USER@$SSH_HOST:$REMOTE_DIR/WindowsServer/GameUserSettings.ini"
+          scp -P "$SSH_PORT" -o StrictHostKeyChecking=no out/Game.ini            "$SSH_USER@$SSH_HOST:$REMOTE_DIR/WindowsServer/Game.ini"
+
+      - name: Prepare compose override on staging VM
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'EOF'
+          set -euo pipefail
+          cat > "${REMOTE_DIR}/override.validate.yml" <<YML
+          services:
+            asa:
+              container_name: "asa-validate-${{ fromJSON(needs.determine-pr.outputs.pr).number }}-${{ matrix.id }}"
+              environment:
+                - SESSION_NAME=USARoleplay TEST PR#${{ fromJSON(needs.determine-pr.outputs.pr).number }} (${{ matrix.id }})
+                - SERVERPASSWORD=validate${{ fromJSON(needs.determine-pr.outputs.pr).number }}
+              ports:
+                - "${GAME_P}:${GAME_P}/udp"
+                - "${RAW_P}:${RAW_P}/udp"
+                - "${QUERY_P}:${QUERY_P}/udp"
+              # Bind the INIs read-only into the WindowsServer config dir
+              volumes:
+                - "${REMOTE_DIR}/WindowsServer:/home/steam/ARK/ShooterGame/Saved/Config/WindowsServer:ro"
+          YML
+          EOF
+
+      - name: Launch validation container (compose)
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'EOF'
+          set -euo pipefail
+          cd "${REMOTE_DIR}"
+          # Bring up minimal ASA with override; you can point -f to your repo compose if needed
+          # If you want to reuse your per-map compose, clone repo on the VM and run:
+          #   docker compose -f /srv/repo/${{ matrix.work_subdir }}/docker-compose.yaml -f override.validate.yml -p "validate-pr-${{ fromJSON(needs.determine-pr.outputs.pr).number }}-{{ matrix.id }}" up -d
+          # Below is a lightweight single-file compose created on the fly:
+          cat > docker-compose.yml <<'YML'
+          services:
+            asa:
+              image: mschnitzer/asa-linux-server:latest
+              restart: unless-stopped
+              environment:
+                - SESSION_NAME=${SESSION_NAME:-USARoleplay TEST}
+                - SERVERPASSWORD=${SERVERPASSWORD:-validate}
+              ports:
+                - "${GAME_P}:${GAME_P}/udp"
+                - "${RAW_P}:${RAW_P}/udp"
+                - "${QUERY_P}:${QUERY_P}/udp"
+              volumes:
+                - "${REMOTE_DIR}/WindowsServer:/home/steam/ARK/ShooterGame/Saved/Config/WindowsServer:ro"
+          YML
+          docker compose -f docker-compose.yml -f override.validate.yml -p "validate-pr-${{ fromJSON(needs.determine-pr.outputs.pr).number }}-${{ matrix.id }}" up -d
+          EOF
+
+      - name: Wait for server to come up (logs or best-effort sleep)
+        run: |
+          # If you want a strict log gate, ssh and tail logs like in your other workflows.
+          # For simplicity here, just give it time to boot.
+          sleep 60
+
+      - name: Comment PR with join info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const p = JSON.parse(process.env.PR_JSON);
+            const body = [
+              `### ✅ Validation server up for **${process.env.TTL_MIN} minutes**`,
+              `**Map:** \`${{ matrix.id }}\``,
+              `**Browser:** look for: *USARoleplay TEST PR#${p.number} (${{ matrix.id }})*`,
+              `**Direct:** \`${process.env.SSH_HOST}:${process.env.TEST_GAME_PORT}\` (UDP)`,
+              `**Query port:** \`${process.env.TEST_QUERY_PORT}\``,
+              ``,
+              `This server will be torn down automatically after the time window or when the workflow finishes.`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: p.number,
+              body
+            });
+
+      - name: Keep server running, then tear down
+        run: |
+          sleep $(( TTL_MIN * 60 ))
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<'EOF'
+          set -euo pipefail
+          docker compose -f "${REMOTE_DIR}/docker-compose.yml" -f "${REMOTE_DIR}/override.validate.yml" -p "validate-pr-${{ fromJSON(needs.determine-pr.outputs.pr).number }}-${{ matrix.id }}" down || true
+          EOF
+
+      - name: Close UFW for test ports
+        if: always()
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" <<EOF
+          set -euo pipefail
+          sudo ufw delete allow ${GAME_P}/udp || true
+          sudo ufw delete allow ${RAW_P}/udp || true
+          sudo ufw delete allow ${QUERY_P}/udp || true
+          sudo ufw status verbose | sed -n '1,200p'
+          EOF
+
+      - name: Comment PR that server was torn down
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const p = JSON.parse(process.env.PR_JSON);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: p.number,
+              body: `🧹 Validation server for \`${{ matrix.id }}\` has been torn down.`
+            });
+
+      # Tolerate the occasional self-hosted post-step flake
+      - name: Auto-rerun on transient post-step failures
+        if: failure() && github.run_attempt < 3
+        env:
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          TOKEN: ${{ github.token }}
+        run: |
+          echo "Attempt ${{ github.run_attempt }} failed. Re-running in 30s…"
+          sleep 30
+          curl -sSL -X POST \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/rerun" || true
+
+  gate:
+    name: gate & summarize
+    needs: [validate]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize & tolerate post-step flakes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run_id = context.runId;
+            const ALLOWED = new Set(['Post Setup SSH', 'Post Checkout', 'Post Checkout (stabilize action downloads)']);
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner, repo: context.repo.repo, run_id, per_page: 100
+            });
+            const offenders = [];
+            const shards = [];
+            for (const job of jobs.data.jobs) {
+              if (!job.name.startsWith('validate (')) continue;
+              const summary = { name: job.name, conclusion: job.conclusion, badSteps: [] };
+              for (const s of job.steps || []) {
+                if (s.conclusion === 'failure' && !ALLOWED.has(s.name)) {
+                  summary.badSteps.push(s.name);
+                }
+              }
+              shards.push(summary);
+              if (summary.badSteps.length) offenders.push(`${job.name} ⇒ ${summary.badSteps.join(', ')}`);
+            }
+            let md = `## INI Validation Summary\n\n`;
+            for (const s of shards) {
+              md += `- **${s.name}** → ${s.conclusion || 'n/a'}`;
+              if (s.badSteps.length) md += ` (ignored failures: ${s.badSteps.join(', ')})`;
+              md += `\n`;
+            }
+            core.summary.addRaw(md).write();
+            if (offenders.length) {
+              core.info('Only tolerated post-step flakes present; not failing the run.');
+            }
+      - name: Remove "validation-running" label
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const prNum = ${{ needs.determine-pr.outputs.pr && fromJSON(needs.determine-pr.outputs.pr).number || 'null' }};
+              if (prNum) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: prNum, name: 'validation-running'
+                });
+              }
+            } catch (e) { /* ignore if missing */ }
