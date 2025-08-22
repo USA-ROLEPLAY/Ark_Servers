@@ -16,6 +16,7 @@ Do not break established syntax in this file, as it is automatically updated by 
 
   - #### 📝 Documentation
 
+    - Fix typo in server downtime notice [@jlengelbrecht](https://github.com/jlengelbrecht) ([#80](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/80))
     - Add caution note for server downtime [@jlengelbrecht](https://github.com/jlengelbrecht) ([#78](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/78))
 
 ## 2025-08-21
