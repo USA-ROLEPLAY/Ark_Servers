@@ -12,6 +12,12 @@ Do not break established syntax in this file, as it is automatically updated by 
 
 ## 2025-08-22
 
+### 🧰 Maintenance
+
+  - #### 📝 Documentation
+
+    - Add caution note for server downtime [@jlengelbrecht](https://github.com/jlengelbrecht) ([#78](https://github.com/USA-ROLEPLAY/Ark_Servers/pull/78))
+
 ## 2025-08-21
 
 ### 🚀 Updates
