@@ -3,8 +3,8 @@ name: ASA Daily ARK Containers Restart
 on:
   schedule:
     # 07:00 America/New_York year-round (DST + Standard Time)
-    - cron: '0 11 * * *'   # 07:00 during DST (UTC-4)
-    - cron: '0 12 * * *'   # 07:00 during Standard Time (UTC-5)
+    # - cron: '0 11 * * *'   # 07:00 during DST (UTC-4)  # disabling for now
+    # - cron: '0 12 * * *'   # 07:00 during Standard Time (UTC-5) # disabling for now
   workflow_dispatch:
     inputs:
       hosts:
