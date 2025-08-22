@@ -1,13 +1,15 @@
 <!--🛑 Changes to server INI files must be tested.  
 PRs without prior testing will be closed. -->
-## ✍️ Description  
+## ✏️ Description  
 
 
 
+---
 ## 🔗 Related PR / Issue  
 Link: #
 
 
+---
 ## ✅ Prerequisites  (**X** in brackets) 
 
 - [ ] I have read the [Contributing Guide](https://github.com/USA-ROLEPLAY/Ark_Servers/blob/main/.github/CONTRIBUTING.md)
@@ -26,3 +28,8 @@ Link: #
 - [ ] 🐋 **New server** – A new server deployment.
 - [ ] 🔧 **Refactoring / Code Cleanup** – Improves readability or maintainability without changing functionality.  
 - [ ] 📖 **Documentation update** – Changes to `README`, `AppName.md`, `CONTRIBUTING.md`, or other docs.
+
+---
+
+## Validation Testing
+- [ ] 🧪 **Request INI validation server** – spin up a temporary test server for this PR 
