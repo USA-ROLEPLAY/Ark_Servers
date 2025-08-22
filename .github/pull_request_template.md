@@ -31,5 +31,5 @@ Link: #
 
 ---
 
-## Validation Testing
+## Validation Testing (**X** in brackets)
 - [ ] 🧪 **Request INI validation server** – spin up a temporary test server for this PR 
