@@ -114,7 +114,8 @@ jobs:
                 { box: '💾 **INI change**',                    label: 'ini change' },
                 { box: '🐋 **New server**',                   label: 'new server' },
                 { box: '🔧 **Refactoring / Code Cleanup**',   label: 'refactor' },
-                { box: '📖 **Documentation update**',         label: 'maintenance' }
+                { box: '📖 **Documentation update**',         label: 'maintenance' },
+                { box: '🧪 **Request INI validation server**', label: 'validate-ini' }
               ];
 
               for (const { box, label } of map) {
