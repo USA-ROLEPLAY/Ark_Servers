@@ -1,3 +1,7 @@
+> [!Caution]
+> Servers currently down due to me moving this weekend.
+> Servers expected to comce back up mid next week sometime 
+
 <div align="center">
   <p align="center">
     <a href="#">
