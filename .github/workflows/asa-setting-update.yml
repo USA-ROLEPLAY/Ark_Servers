@@ -62,7 +62,7 @@ jobs:
 
       - name: Build matrix from deploy/targets.json
         id: mk-matrix
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           CHANGED_LIST: ${{ steps.changed_range.outputs.list }}
         with:
@@ -254,7 +254,7 @@ jobs:
 
     steps:
       - name: Verify only allowed post-step failures and summarize
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ github.token }}
           script: |
