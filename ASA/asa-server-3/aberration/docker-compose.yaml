@@ -6,7 +6,7 @@ services:
     network_mode: host
     entrypoint: "/bin/sh -c 'exec /usr/bin/start_server'"
     user: gameserver
-    image: "mschnitzer/asa-linux-server:1.4.1"
+    image: "mschnitzer/asa-linux-server:1.5.1"
     tty: true
     environment:
       - >-
