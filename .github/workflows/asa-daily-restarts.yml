@@ -40,7 +40,7 @@ jobs:
 
       - name: Mint GitHub App token (for any follow-on API calls)
         id: app
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.APP_ID2 }}
           private-key: ${{ secrets.APP_PRIVATE_KEY2 }}
